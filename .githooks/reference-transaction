@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# 共用 reference-transaction：`git tag` 建立或移動本地 tag 前先跑單元測試，失敗就取消
+# 設定 SKIP_TAG_TESTS=1 可略過
+set -euo pipefail
+
+STATE="${1:-}"
+TAGS=()
+while read -r _old new ref; do
+    case "$ref" in
+        refs/tags/*) [[ "$new" =~ ^0+$ ]] || TAGS+=("$ref $new") ;;
+    esac
+done
+
+[ "$STATE" = "prepared" ] || exit 0
+[ "${#TAGS[@]}" -gt 0 ] || exit 0
+[ "${SKIP_TAG_TESTS:-0}" = "1" ] && exit 0
+
+# 只攔 `git tag`，fetch／pull 帶下來的 tag 不檢查
+PARENT="$(ps -o command= -p "$PPID" 2>/dev/null || true)"
+[[ " $PARENT " =~ [[:space:]]tag[[:space:]] ]] || exit 0
+
+fail() {
+    echo "reference-transaction: $1，已取消建立 tag（SKIP_TAG_TESTS=1 可略過）" >&2
+    exit 1
+}
+
+HEAD_COMMIT="$(git rev-parse HEAD)"
+for entry in "${TAGS[@]}"; do
+    ref="${entry% *}"
+    target="$(git rev-parse "${entry#* }^{commit}")"
+    [ "$target" = "$HEAD_COMMIT" ] || fail "${ref#refs/tags/} 指向的不是 HEAD，請先 checkout 到該 commit 再上 tag"
+done
+
+[ -z "$(git status --porcelain)" ] || fail "工作區有未 commit 的修改或未追蹤的檔案"
+
+echo "reference-transaction: 建立 tag 前執行單元測試…" >&2
+mise run test >&2 || fail "單元測試未通過"

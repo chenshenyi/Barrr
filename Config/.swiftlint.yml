@@ -1,0 +1,253 @@
+# SwiftLint 設定，路徑以本檔所在的 Config/ 為基準
+
+# 所有 warning 一律視為 error（命令列、hook、編輯器都一樣）
+strict: true
+
+included:
+  # 含 NoSleepCore/、NoSleepPlugin/ 與 Tests/
+  - ../Targets
+
+excluded:
+  - ../DerivedData
+  - ../build
+  - ../.build
+  # SwiftPM manifest 是設定檔
+  - ../Package.swift
+
+# 交由 SwiftFormat 處理的排版規則
+disabled_rules:
+  - trailing_comma
+  - opening_brace
+  - vertical_parameter_alignment_on_call
+
+opt_in_rules:
+  - closure_spacing
+  - collection_alignment
+  - contains_over_first_not_nil
+  - empty_count
+  - empty_string
+  - explicit_init
+  - first_where
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - last_where
+  - modifier_order
+  - no_magic_numbers
+  - one_declaration_per_file
+  - sorted_first_last
+  - toggle_bool
+  - vertical_whitespace_closing_braces
+
+line_length:
+  warning: 120
+  error: 160
+  ignores_comments: true
+  ignores_urls: true
+
+# 與 SwiftFormat 一致：nonisolated 等隔離修飾詞放在存取層級之後
+modifier_order:
+  preferred_modifier_order:
+    [override, acl, setterACL, isolation, dynamic, mutators, lazy, final, required, convenience, typeMethods, owned]
+
+# 數字只能出現在具名常數的宣告處（let／static let、enum raw value、預設參數）
+no_magic_numbers:
+  allowed_numbers: [0, 1]
+
+type_body_length:
+  warning: 300
+  error: 500
+
+file_length:
+  warning: 500
+  error: 1000
+
+identifier_name:
+  excluded:
+    - id
+    - x
+    - y
+
+custom_rules:
+  side_effect_via_dependency:
+    name: "Side Effect via Dependency Injection"
+    regex: '\bDate(\.init)?\(\)|\bDate\.now\b|\bUUID(\.init)?\(\)|\bCFAbsoluteTimeGetCurrent\b|\.random(Element)?\(|\bSystemRandomNumberGenerator\b|\.shuffled?\(\)|\bUserDefaults\.standard\b|\bSecItem(Add|CopyMatching|Update|Delete)\b|\bFileManager\.default\b|\bURLSession\.shared\b|\b(Locale|TimeZone|Calendar)\.(current|autoupdatingCurrent)\b|\bNotificationCenter\.default\b|\bTask\.sleep\b|\b(Continuous|Suspending)Clock\(\)'
+    message: "有副作用的 API 必須透過依賴注入取得，live 實作只能放在 Targets/NoSleepPlugin/Dependencies/Live/"
+    severity: error
+    excluded:
+      - '/NoSleepPlugin/Dependencies/Live/'
+
+  no_singleton_declaration:
+    name: "No Singleton Declaration"
+    regex: '\bstatic\s+(let|var)\s+(shared|sharedInstance|default|standard|instance|current|main)\b'
+    message: "禁止宣告 singleton，請改用依賴注入"
+    severity: error
+
+  no_singleton_access:
+    name: "No Singleton Access"
+    regex: '\b[A-Z]\w*\.(shared|sharedInstance)\b|\bUIDevice\.current\b|\bUIScreen\.main\b|\bBundle\.main\b|\bProcessInfo\.processInfo\b'
+    message: "禁止直接取用 singleton，請透過依賴注入；包裝系統 singleton 的 live 實作只能放在 Targets/NoSleepPlugin/Dependencies/Live/"
+    severity: error
+    excluded:
+      - '/NoSleepPlugin/Dependencies/Live/'
+
+  no_inline_string_literal:
+    name: "No Inline String Literal"
+    # 字串只能出現在具名常數的宣告處：let／var 宣告、enum case raw value、switch case 對應、單獨一行的回傳值、
+    # 多行字串（由 let 宣告開始）單獨一行的結尾 """
+    regex: '^(?![ \t]*(case\b|(@\w+[ \t]+)*((private|fileprivate|internal|public|static|nonisolated)[ \t]+)*(let|var)[ \t]+\w+|return[ \t]+"|"[^"\n]*"[ \t]*$|"""[ \t]*$))[^\n"]*"(?:[^"\n]|"")'
+    excluded_match_kinds:
+      - comment
+      - doccomment
+    message: "字串字面常數不可散落在程式碼中，請宣告為具名常數（let／static let、enum raw value）；選單文字集中在 MenuText"
+    severity: error
+    excluded:
+      - '/Tests/'
+
+  no_reference_type:
+    name: "No Reference Type"
+    # class、actor、@Observable、AnyObject 限制與 ObservableObject 系列的 property wrapper 都是參考型別
+    regex: '^[ \t]*((private|fileprivate|internal|public|open|final|nonisolated)[ \t]+)*(class|actor)[ \t]+[A-Z]|\b(AnyObject|ObservableObject)\b|@(Observable|StateObject|ObservedObject|Bindable)\b'
+    excluded_match_kinds:
+      - comment
+      - doccomment
+    message: "主要內容只用 struct／enum；逼不得已要用參考型別時，先與使用者討論替代方案，再以 swiftlint:disable 標示並註明原因"
+    severity: error
+    included:
+      - '/Targets/NoSleepCore/'
+      - '/Targets/NoSleepPlugin/'
+      - '/Tests/'
+
+  explicit_sendable:
+    name: "Explicit Sendable"
+    # Error 本身就是 Sendable；@MainActor 型別因隔離已是 Sendable（重複宣告會被 redundant_sendable 擋下）
+    regex: '(?<!@MainActor\n)^[ \t]*((private|fileprivate|internal|public|nonisolated|indirect)[ \t]+)*(struct|enum|protocol)[ \t]+\w+(?![^{]*\b(Sendable|Error)\b)[^{]*\{'
+    excluded_match_kinds:
+      - comment
+      - doccomment
+    message: "型別一律明確宣告 Sendable（Error 與 @MainActor 型別除外）；確實無法 Sendable 時以 swiftlint:disable 標示並註明原因"
+    severity: error
+    included:
+      - '/Targets/NoSleepCore/'
+      - '/Targets/NoSleepPlugin/'
+
+  no_unsafe_pointer:
+    name: "No Unsafe Pointer"
+    # 指標不受型別與邊界檢查；系統 API 交出的指標只在 live 實作處理
+    regex: '\b(withUnsafe\w*|Unsafe(Mutable)?(Raw)?(Buffer)?Pointer|Unmanaged|unsafeAddress)\b'
+    match_kinds:
+      - identifier
+      - typeidentifier
+    message: "不用 unsafe 指標：連續記憶體用 Span／MutableSpan 或 Array；系統 API 交出的指標只能在 Targets/NoSleepPlugin/Dependencies/Live/ 轉成 Array"
+    severity: error
+    included:
+      - '/Targets/NoSleepCore/'
+      - '/Targets/NoSleepPlugin/'
+      - '/Tests/'
+    excluded:
+      - '/NoSleepPlugin/Dependencies/Live/'
+
+  no_unchecked_sendable:
+    name: "No Unchecked Sendable"
+    regex: '@unchecked[ \t]+Sendable|nonisolated\(unsafe\)'
+    excluded_match_kinds:
+      - comment
+      - doccomment
+    message: "不用 @unchecked Sendable、nonisolated(unsafe) 規避檢查；包裝非 Sendable 的系統型別時不持有實例，在使用時才建立或取得"
+    severity: error
+
+  no_type_cast:
+    name: "No Type Cast"
+    # as、as?、as!、is 與 unsafeBitCast 系列都在執行期判斷型別或略過型別檢查
+    regex: '\b(as|is|unsafeBitCast|unsafeDowncast)\b'
+    match_kinds:
+      - keyword
+      - identifier
+    message: "禁止轉型與型別判斷（as、as?、as!、is、unsafeBitCast）：用泛型、protocol、enum associated value 或 typed throws 讓型別在編譯期確定；字面值的型別用型別標註或 init 指定"
+    severity: error
+
+  no_try_optional:
+    name: "No try?"
+    regex: '\btry\?'
+    excluded_match_kinds:
+      - comment
+      - doccomment
+      - string
+    message: "禁止 try? 吞掉錯誤：用 do-catch 依錯誤的型別具體處理"
+    severity: error
+
+  typed_throws:
+    name: "Typed Throws"
+    regex: '\b(throws|rethrows)\b(?!\()'
+    match_kinds:
+      - keyword
+    message: "一律宣告 typed throws（throws(XxxError)），讓 catch 拿到具體的錯誤型別；系統 API 的錯誤在邊界轉成自己的 Error enum。必須符合 untyped 的系統要求（Decodable）時以 swiftlint:disable 標示並註明原因"
+    severity: error
+    included:
+      - '/Targets/NoSleepCore/'
+      - '/Targets/NoSleepPlugin/'
+
+  no_unstructured_concurrency:
+    name: "No Unstructured Concurrency"
+    # DispatchQueue 與 Task.detached 跳出 structured concurrency，失去取消與隔離的檢查
+    regex: '\bDispatchQueue\b|\bTask\.detached\b'
+    excluded_match_kinds:
+      - comment
+      - doccomment
+      - string
+    message: "用 async/await 與 structured concurrency，不用 DispatchQueue 或 Task.detached；確有必要時以 swiftlint:disable 標示並註明原因"
+    severity: error
+
+  no_async_throwing_stream:
+    name: "No AsyncThrowingStream"
+    regex: '\bAsyncThrowingStream\b'
+    match_kinds:
+      - identifier
+      - typeidentifier
+    message: "AsyncThrowingStream 的錯誤型別是 untyped：串流前可能失敗的部分用 typed throws，串流本身用 AsyncStream"
+    severity: error
+
+  async_stream_in_dependency:
+    name: "AsyncStream Creation in Dependency"
+    # 建立 AsyncStream 會產生共用可變狀態的 continuation，只在包裝 callback 的依賴實作中使用；其餘只消費串流
+    regex: '(?<!-> )\bAsyncStream(<[^>\n]*>)?\s*(\.makeStream\(|\(|\{)'
+    excluded_match_kinds:
+      - comment
+      - doccomment
+      - string
+    message: "AsyncStream 只能在依賴實作（Dependencies/）與測試中建立；功能程式只消費依賴回傳的串流"
+    severity: error
+    excluded:
+      - '/Dependencies/'
+      - '/Tests/'
+
+  system_framework_in_wrapper:
+    name: "System Framework in Wrapper"
+    # 這些框架提供的是 class（Foundation 的 Process 等），只在包裝系統的 live 實作使用
+    regex: '^[ \t]*(@\w+[ \t]+)*import[ \t]+(UIKit|AppKit|AVFAudio|AVFoundation|AVKit|AudioToolbox|CoreAudio|Dispatch|ObjectiveC|Foundation)\b'
+    message: "提供 class 的系統框架只能在 Targets/NoSleepPlugin/Dependencies/Live/ import，由 struct 包裝後對外只露出 protocol 與值型別"
+    severity: error
+    included:
+      - '/Targets/NoSleepCore/'
+      - '/Targets/NoSleepPlugin/'
+    excluded:
+      - '/NoSleepPlugin/Dependencies/Live/'
+
+  no_foundation_coder:
+    name: "No Foundation Coder"
+    # Foundation 的編解碼器都是 class
+    regex: '\b(JSONDecoder|JSONEncoder|PropertyListDecoder|PropertyListEncoder|JSONSerialization|NSKeyedArchiver|NSKeyedUnarchiver|Encodable|Codable)\b'
+    match_kinds:
+      - identifier
+      - typeidentifier
+    message: "不用 Foundation 的 JSONDecoder／JSONEncoder 等 class 編解碼器與 Encodable／Codable：需要 JSON 時先與使用者討論（Music-Tool 用 swift-json）"
+    severity: error
+    excluded:
+
+  pure_type_import:
+    name: "Pure Type Import"
+    # 純物件只能使用 Swift 標準函式庫，需要 Foundation 的功能時只能匯入 FoundationEssentials
+    regex: '^[ \t]*(@\w+[ \t]+)*import[ \t]+(?!FoundationEssentials\b)\w+'
+    message: "NoSleepCore 的純物件不可依賴 Foundation 或平台框架（需要時用 FoundationEssentials）；碰到系統的部分放到 Targets/NoSleepPlugin/Dependencies/Live/"
+    severity: error
+    included:
+      - '/Targets/NoSleepCore/'

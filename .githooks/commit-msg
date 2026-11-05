@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# 共用 commit-msg：檢查訊息是否符合 Conventional Commits，規則見 Config/commitlint.conf
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+if ! command -v mise >/dev/null 2>&1; then
+    echo "commit-msg: 找不到 mise，請先安裝 mise 後執行 'mise install'" >&2
+    exit 1
+fi
+# 路徑取自 mise.toml
+eval "$(mise env --shell bash)"
+# shellcheck source=/dev/null
+source "$NOSLEEP_COMMITLINT_CONFIG"
+
+MSG_FILE="$1"
+# 去掉 git 的註解行與 --verbose 產生的 diff
+MSG="$(sed -e '/^# ------------------------ >8 ------------------------$/,$d' -e '/^#/d' "$MSG_FILE")"
+HEADER="$(printf '%s\n' "$MSG" | sed -n '1p')"
+
+# git 自動產生的訊息不檢查
+case "$HEADER" in
+    "Merge "* | "Revert \""* | "fixup! "* | "squash! "* | "amend! "*) exit 0 ;;
+esac
+
+fail() {
+    {
+        echo "commit-msg: $1"
+        echo
+        echo "  格式：<type>(<scope>)!: <subject>"
+        echo "  type：$COMMIT_TYPES"
+        echo "  範例：feat(menu): 新增螢幕可關閉的模式"
+        echo "        fix: 修正無法讀取狀態時的選單"
+        echo
+        echo "  目前標題：$HEADER"
+    } >&2
+    exit 1
+}
+
+char_count() {
+    printf '%s' "$1" | LC_ALL=en_US.UTF-8 wc -m | tr -d ' '
+}
+
+TYPES_PATTERN="$(echo "$COMMIT_TYPES" | tr ' ' '|')"
+if ! printf '%s' "$HEADER" | grep -Eq "^($TYPES_PATTERN)(\([a-z0-9._/-]+\))?!?: [^ ].*$"; then
+    fail "標題不符合 Conventional Commits 格式"
+fi
+
+SUBJECT="${HEADER#*: }"
+case "$SUBJECT" in
+    *. | *。) fail "subject 結尾不要加句號" ;;
+esac
+
+if [ "$(char_count "$HEADER")" -gt "$HEADER_MAX_LENGTH" ]; then
+    fail "標題超過 $HEADER_MAX_LENGTH 個字元"
+fi
+
+if [ -n "$(printf '%s\n' "$MSG" | sed -n '2p')" ]; then
+    fail "標題與內文之間需要空一行"
+fi
+
+if [ "$BODY_MAX_LINE_LENGTH" -gt 0 ]; then
+    while IFS= read -r line; do
+        if [ "$(char_count "$line")" -gt "$BODY_MAX_LINE_LENGTH" ]; then
+            fail "內文有超過 $BODY_MAX_LINE_LENGTH 個字元的行：$line"
+        fi
+    done < <(printf '%s\n' "$MSG" | sed '1,2d')
+fi

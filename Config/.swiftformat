@@ -1,0 +1,19 @@
+# SwiftFormat 設定，由 mise run format 與 pre-commit hook 使用
+
+--swiftversion 6.0
+--exclude DerivedData,.build,build,*.xcodeproj
+
+--indent 4
+--maxwidth 120
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--closingparen balanced
+--commas always
+--semicolons never
+--importgrouping testable-last
+--self remove
+--stripunusedargs closure-only
+--header strip
+
+--disable redundantReturn

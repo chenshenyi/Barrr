@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# 共用 pre-commit：對 staged 的 Swift 檔先跑 SwiftFormat，再跑 SwiftLint
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+if ! command -v mise >/dev/null 2>&1; then
+    echo "pre-commit: 找不到 mise，請先安裝 mise 後執行 'mise install'" >&2
+    exit 1
+fi
+# 路徑與工具都取自 mise.toml
+eval "$(mise env --shell bash)"
+
+FILES_LIST="$(mktemp)"
+trap 'rm -f "$FILES_LIST"' EXIT
+
+if git diff --cached --name-only --diff-filter=AR | grep -q .; then
+    echo "pre-commit: structure"
+    "$NOSLEEP_LINT_SCRIPTS/lint-structure.sh" --staged
+fi
+
+if git diff --cached --name-only --diff-filter=ACMR -- "$NOSLEEP_SCRIPTS" "$NOSLEEP_GIT_HOOKS" | grep -q .; then
+    echo "pre-commit: scripts"
+    "$NOSLEEP_LINT_SCRIPTS/lint-scripts.sh"
+fi
+
+git diff --cached --name-only --diff-filter=ACMR -z -- '*.swift' >"$FILES_LIST"
+[ -s "$FILES_LIST" ] || exit 0
+
+# 同時有 unstaged 修改的檔案無法安全地自動格式化後重新 stage
+PARTIAL="$(git diff --name-only -z -- '*.swift' | tr '\0' '\n' | grep -Fxf - <(tr '\0' '\n' <"$FILES_LIST") || true)"
+if [ -n "$PARTIAL" ]; then
+    echo "pre-commit: 以下檔案有未 stage 的修改，請先全部 stage 或 stash 後再 commit：" >&2
+    echo "$PARTIAL" | sed 's/^/  /' >&2
+    exit 1
+fi
+
+echo "pre-commit: SwiftFormat"
+xargs -0 swiftformat --config "$NOSLEEP_SWIFTFORMAT_CONFIG" --quiet <"$FILES_LIST"
+xargs -0 git add -- <"$FILES_LIST"
+
+echo "pre-commit: SwiftLint"
+xargs -0 swiftlint lint --config "$NOSLEEP_SWIFTLINT_CONFIG" --quiet --force-exclude <"$FILES_LIST"

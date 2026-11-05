@@ -1,0 +1,77 @@
+[tools]
+swiftlint = "latest"
+swiftformat = { version = "latest", no_app = "true", rename_exe = "swiftformat" }
+git-lfs = "3.8.0"
+
+# 腳本、task 與 git hooks 用到的路徑一律在這裡定義，腳本內不寫路徑字面值（lint:scripts 檢查）
+[env]
+NOSLEEP_ROOT = "{{config_root}}"
+NOSLEEP_MISE_CONFIG = "{{env.NOSLEEP_ROOT}}/mise.toml"
+NOSLEEP_SCRIPTS = "{{env.NOSLEEP_ROOT}}/Scripts"
+NOSLEEP_LINT_SCRIPTS = "{{env.NOSLEEP_SCRIPTS}}/Lint"
+NOSLEEP_GIT_HOOKS = "{{env.NOSLEEP_ROOT}}/.githooks"
+NOSLEEP_CONFIG = "{{env.NOSLEEP_ROOT}}/Config"
+NOSLEEP_SWIFTFORMAT_CONFIG = "{{env.NOSLEEP_CONFIG}}/.swiftformat"
+NOSLEEP_SWIFTLINT_CONFIG = "{{env.NOSLEEP_CONFIG}}/.swiftlint.yml"
+NOSLEEP_COMMITLINT_CONFIG = "{{env.NOSLEEP_CONFIG}}/commitlint.conf"
+NOSLEEP_BUILD = "{{env.NOSLEEP_ROOT}}/.build"
+# SwiftPM 的 executable product，也是裝進 SwiftBar 的檔案
+NOSLEEP_PRODUCT = "nosleep"
+# SwiftBar 依檔名的第二段決定重新整理的間隔（1m）；狀態平常只在點選單後改變，點完會立即重新整理
+NOSLEEP_PLUGIN_FILE = "nosleep.1m.bin"
+# SwiftBar 的 plugin 資料夾；未設定時讀 SwiftBar 的偏好設定，可在 mise.local.toml 覆寫
+NOSLEEP_SWIFTBAR_DEFAULTS_DOMAIN = "com.ameba.SwiftBar"
+
+[tasks.setup]
+description = "Clone 後初始化：啟用共用 git hooks 與 Git LFS"
+run = [
+  "mise upgrade swiftlint swiftformat",
+  "git config core.hooksPath \"$NOSLEEP_GIT_HOOKS\"",
+  "git lfs install --local",
+  "git lfs pull",
+]
+
+[tasks."tools:update"]
+description = "把 swiftlint、swiftformat 升到最新版"
+run = "mise upgrade swiftlint swiftformat"
+
+[tasks.build]
+description = "以 release 設定 build nosleep（有 pueue 時排隊執行）"
+run = "$NOSLEEP_SCRIPTS/build.sh"
+
+[tasks.install]
+description = "build 後把 nosleep 裝進 SwiftBar 的 plugin 資料夾"
+depends = ["build"]
+run = "$NOSLEEP_SCRIPTS/install.sh"
+
+[tasks.test]
+description = "執行 NoSleepCore 的測試（swift test；有 pueue 時排隊執行）"
+run = "$NOSLEEP_SCRIPTS/test.sh"
+
+[tasks.format]
+description = "以 SwiftFormat 格式化（可傳入檔案路徑，預設整個 repo）"
+usage = 'arg "[paths]..." help="要格式化的路徑" default="."'
+run = "swiftformat --config \"$NOSLEEP_SWIFTFORMAT_CONFIG\" ${usage_paths?}"
+
+[tasks."format:check"]
+description = "只檢查格式，不改檔"
+usage = 'arg "[paths]..." help="要檢查的路徑" default="."'
+run = "swiftformat --config \"$NOSLEEP_SWIFTFORMAT_CONFIG\" --lint ${usage_paths?}"
+
+[tasks.lint]
+description = "以 SwiftLint 檢查（可傳入檔案路徑，預設整個 repo）"
+depends = ["lint:structure", "lint:scripts"]
+usage = 'arg "[paths]..." help="要檢查的路徑，未指定時依設定檔的 included"'
+run = "swiftlint lint --config \"$NOSLEEP_SWIFTLINT_CONFIG\" --quiet ${usage_paths:-}"
+
+[tasks."lint:structure"]
+description = "檢查目錄分層：根目錄以外，每個目錄的直接內容不可超過 12 個"
+run = "$NOSLEEP_LINT_SCRIPTS/lint-structure.sh"
+
+[tasks."lint:scripts"]
+description = "檢查腳本與 git hooks：路徑一律取自 mise.toml 的 [env]（NOSLEEP_*），不寫路徑字面值"
+run = "$NOSLEEP_LINT_SCRIPTS/lint-scripts.sh"
+
+[tasks."lint:fix"]
+description = "以 SwiftLint 自動修正可修的違規"
+run = "swiftlint lint --config \"$NOSLEEP_SWIFTLINT_CONFIG\" --fix --quiet"
