@@ -13,7 +13,7 @@ description: 決策順序 — 本專案做任何設計或實作決策時的思�
 
 1. **架構**：用型別與結構讓錯誤寫不出來或編譯不過（例如 `Command` enum 讓指令只能是已知的幾種、typed throws 讓錯誤一定被處理）。
 2. **lint／format**：架構擋不住時，用 SwiftLint／SwiftFormat 或檢查腳本在 commit 前擋下（例如 `system_framework_in_wrapper`、`lint-scripts.sh`）。
-3. **測試**：靜態檢查做不到時，用單元／整合測試在執行期驗證（例如 `MenuTests` 比對 SwiftBar 的輸出）。
+3. **測試**：靜態檢查做不到時，用單元／整合測試在執行期驗證（例如 `NoSleepModelTests` 驗證切換方式時先交還目前的）。
 4. **文件／prompt**：以上都做不到時，才寫進 `CLAUDE.md`、`.claude/rules/` 或 skill。
 
 新增任何規範時，先說明為什麼不能用更前面的層級保證；文件只是最後一道，不能取代前面三層。

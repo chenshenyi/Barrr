@@ -15,6 +15,12 @@ eval "$(mise env --shell bash)"
 FILES_LIST="$(mktemp)"
 trap 'rm -f "$FILES_LIST"' EXIT
 
+if git diff --cached --name-only --diff-filter=ACMR -- "$NOSLEEP_SOURCES" ':(exclude)*.swift' | grep -q . ||
+    git diff --cached --name-only --diff-filter=ACMRD -- "$NOSLEEP_RESOURCES" | grep -q .; then
+    echo "pre-commit: resources"
+    "$NOSLEEP_LINT_SCRIPTS/lint-assets.sh"
+fi
+
 if git diff --cached --name-only --diff-filter=AR | grep -q .; then
     echo "pre-commit: structure"
     "$NOSLEEP_LINT_SCRIPTS/lint-structure.sh" --staged

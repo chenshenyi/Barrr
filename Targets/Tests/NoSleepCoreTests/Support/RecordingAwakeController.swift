@@ -1,35 +1,38 @@
 import NoSleepCore
 
-/// 記錄呼叫的替身：回傳建立時給定的狀態，`error` 不為 nil 時每個操作都拋出它
+/// 記錄呼叫的替身：`hold` 一律回傳識別碼 `assertionID`，給定的錯誤不為 nil 時拋出它
 struct RecordingAwakeController: AwakeController {
     enum Call: Equatable, Sendable {
-        case activeMode
-        case start(AwakeMode)
-        case stop
+        case hold(AwakeMode)
+        case release(AwakeAssertion)
     }
 
-    private let mode: AwakeMode?
-    private let error: AwakeControlError?
+    static let assertionID: UInt32 = 42
+
+    private let holdError: AwakeControlError?
+    private let releaseError: AwakeControlError?
     private let calls: AsyncStream<Call>
     private let continuation: AsyncStream<Call>.Continuation
 
-    init(activeMode: AwakeMode? = nil, error: AwakeControlError? = nil) {
-        mode = activeMode
-        self.error = error
+    init(holdError: AwakeControlError? = nil, releaseError: AwakeControlError? = nil) {
+        self.holdError = holdError
+        self.releaseError = releaseError
         (calls, continuation) = AsyncStream.makeStream()
     }
 
-    func activeMode() throws(AwakeControlError) -> AwakeMode? {
-        try record(.activeMode)
-        return mode
+    func hold(_ mode: AwakeMode) throws(AwakeControlError) -> AwakeAssertion {
+        continuation.yield(.hold(mode))
+        if let holdError {
+            throw holdError
+        }
+        return AwakeAssertion(id: Self.assertionID, mode: mode)
     }
 
-    func start(_ mode: AwakeMode) throws(AwakeControlError) {
-        try record(.start(mode))
-    }
-
-    func stop() throws(AwakeControlError) {
-        try record(.stop)
+    func release(_ assertion: AwakeAssertion) throws(AwakeControlError) {
+        continuation.yield(.release(assertion))
+        if let releaseError {
+            throw releaseError
+        }
     }
 
     /// 依序的呼叫；取得後不再記錄
@@ -40,12 +43,5 @@ struct RecordingAwakeController: AwakeController {
             recorded.append(call)
         }
         return recorded
-    }
-
-    private func record(_ call: Call) throws(AwakeControlError) {
-        continuation.yield(call)
-        if let error {
-            throw error
-        }
     }
 }

@@ -1,4 +1,5 @@
 [tools]
+xcodegen = "2.46.0"
 swiftlint = "latest"
 swiftformat = { version = "latest", no_app = "true", rename_exe = "swiftformat" }
 git-lfs = "3.8.0"
@@ -14,33 +15,44 @@ NOSLEEP_CONFIG = "{{env.NOSLEEP_ROOT}}/Config"
 NOSLEEP_SWIFTFORMAT_CONFIG = "{{env.NOSLEEP_CONFIG}}/.swiftformat"
 NOSLEEP_SWIFTLINT_CONFIG = "{{env.NOSLEEP_CONFIG}}/.swiftlint.yml"
 NOSLEEP_COMMITLINT_CONFIG = "{{env.NOSLEEP_CONFIG}}/commitlint.conf"
+NOSLEEP_APP = "{{env.NOSLEEP_ROOT}}/Targets/App"
+NOSLEEP_SOURCES = "{{env.NOSLEEP_APP}}/NoSleep"
+NOSLEEP_RESOURCES = "{{env.NOSLEEP_APP}}/Resources"
+NOSLEEP_STRING_CATALOGS = "{{env.NOSLEEP_RESOURCES}}/StringCatalog"
+NOSLEEP_PROJECT_SPEC = "{{env.NOSLEEP_ROOT}}/project.yml"
+NOSLEEP_PROJECT = "{{env.NOSLEEP_ROOT}}/NoSleep.xcodeproj"
+NOSLEEP_SCHEME = "NoSleep"
+# project.yml 的 PRODUCT_NAME
+NOSLEEP_APP_NAME = "No Sleep"
 NOSLEEP_BUILD = "{{env.NOSLEEP_ROOT}}/.build"
-# SwiftPM 的 executable product，也是裝進 SwiftBar 的檔案
-NOSLEEP_PRODUCT = "nosleep"
-# SwiftBar 依檔名的第二段決定重新整理的間隔（1m）；狀態平常只在點選單後改變，點完會立即重新整理
-NOSLEEP_PLUGIN_FILE = "nosleep.1m.bin"
-# SwiftBar 的 plugin 資料夾；未設定時讀 SwiftBar 的偏好設定，可在 mise.local.toml 覆寫
-NOSLEEP_SWIFTBAR_DEFAULTS_DOMAIN = "com.ameba.SwiftBar"
+NOSLEEP_DERIVED_DATA = "{{env.NOSLEEP_BUILD}}/DerivedData"
+# mise run install 的安裝位置；可在 mise.local.toml 覆寫
+NOSLEEP_INSTALL_DIR = "/Applications"
 
 [tasks.setup]
-description = "Clone 後初始化：啟用共用 git hooks 與 Git LFS"
+description = "Clone 後初始化：啟用共用 git hooks、Git LFS，並產生 Xcode 專案"
 run = [
   "mise upgrade swiftlint swiftformat",
   "git config core.hooksPath \"$NOSLEEP_GIT_HOOKS\"",
   "git lfs install --local",
   "git lfs pull",
+  "xcodegen generate",
 ]
 
 [tasks."tools:update"]
 description = "把 swiftlint、swiftformat 升到最新版"
 run = "mise upgrade swiftlint swiftformat"
 
+[tasks.generate]
+description = "依 project.yml 產生 NoSleep.xcodeproj"
+run = "xcodegen generate"
+
 [tasks.build]
-description = "以 release 設定 build nosleep（有 pueue 時排隊執行）"
+description = "產生 Xcode 專案並以 Release 設定 build App（有 pueue 時排隊執行）"
 run = "$NOSLEEP_SCRIPTS/build.sh"
 
 [tasks.install]
-description = "build 後把 nosleep 裝進 SwiftBar 的 plugin 資料夾"
+description = "build 後把 App 裝到 /Applications 並重新開啟"
 depends = ["build"]
 run = "$NOSLEEP_SCRIPTS/install.sh"
 
@@ -60,9 +72,13 @@ run = "swiftformat --config \"$NOSLEEP_SWIFTFORMAT_CONFIG\" --lint ${usage_paths
 
 [tasks.lint]
 description = "以 SwiftLint 檢查（可傳入檔案路徑，預設整個 repo）"
-depends = ["lint:structure", "lint:scripts"]
+depends = ["lint:assets", "lint:structure", "lint:scripts"]
 usage = 'arg "[paths]..." help="要檢查的路徑，未指定時依設定檔的 included"'
 run = "swiftlint lint --config \"$NOSLEEP_SWIFTLINT_CONFIG\" --quiet ${usage_paths:-}"
+
+[tasks."lint:assets"]
+description = "檢查資源檔：資料只放在 Resources/，Resources/ 只放 String Catalog；每個 key 都要有每個語言"
+run = "$NOSLEEP_LINT_SCRIPTS/lint-assets.sh"
 
 [tasks."lint:structure"]
 description = "檢查目錄分層：根目錄以外，每個目錄的直接內容不可超過 12 個"

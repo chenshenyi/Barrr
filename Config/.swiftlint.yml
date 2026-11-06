@@ -4,7 +4,7 @@
 strict: true
 
 included:
-  # 含 NoSleepCore/、NoSleepPlugin/ 與 Tests/
+  # 含 App/、NoSleepCore/ 與 Tests/
   - ../Targets
 
 excluded:
@@ -68,13 +68,75 @@ identifier_name:
     - y
 
 custom_rules:
+  system_image_via_extension:
+    name: "System Image via Extension"
+    regex: '\b(Image|UIImage)\(\s*systemName:|systemImage:\s*"'
+    message: "SF Symbol 只能透過 MenuBarSymbol 與 Image(_:) extension 建立"
+    severity: error
+    # extension 本身與驗證 symbol 是否存在的測試除外
+    excluded:
+      - 'Targets/App/NoSleep/Symbol/Image\+MenuBarSymbol\.swift$'
+      - '/Tests/'
+
+  localized_string_via_symbol:
+    name: "Localized String via Generated Symbol"
+    regex: '\b(Text|LocalizedStringResource|LocalizedStringKey|Button|Label|Toggle|Section|Picker|Link|NavigationLink|ContentUnavailableView|TextField|SecureField)\(\s*"|\bString\(\s*localized:|\.(navigationTitle|accessibilityLabel|accessibilityHint|help|alert|confirmationDialog)\(\s*"'
+    message: "UI 文字只能使用 String Catalog 產生的 symbol（例如 Text(.menuResume)）；不需在地化的文字用 Text(verbatim:)"
+    severity: error
+    excluded:
+      - '/Tests/'
+
+  color_via_theme:
+    name: "Color via ThemeColor Symbol"
+    regex: '\b(Color|UIColor)\.(red|orange|yellow|green|mint|teal|cyan|blue|indigo|purple|pink|brown|white|gray|grey|black|magenta|darkGray|lightGray|primary|secondary|tertiary|quaternary|accentColor|label|secondaryLabel|tertiaryLabel|quaternaryLabel|link|placeholderText|separator|opaqueSeparator|darkText|lightText|tintColor|system[A-Z]\w*|secondarySystem\w*|tertiarySystem\w*|quaternarySystem\w*)\b|\.(foregroundStyle|foregroundColor|background|tint|fill|stroke|strokeBorder|border|overlay|accentColor|listRowBackground|listRowSeparatorTint|toolbarBackground)\(\s*\.(red|orange|yellow|green|mint|teal|cyan|blue|indigo|purple|pink|brown|white|gray|grey|black|magenta|darkGray|lightGray|primary|secondary|tertiary|quaternary|accentColor|label|secondaryLabel|tertiaryLabel|quaternaryLabel|link|placeholderText|separator|opaqueSeparator|darkText|lightText|tintColor|system[A-Z]\w*|secondarySystem\w*|tertiarySystem\w*|quaternarySystem\w*)\b|\bcolor:\s*\.(red|orange|yellow|green|mint|teal|cyan|blue|indigo|purple|pink|brown|white|gray|grey|black|magenta|darkGray|lightGray|primary|secondary|tertiary|quaternary|accentColor|label|secondaryLabel|tertiaryLabel|quaternaryLabel|link|placeholderText|separator|opaqueSeparator|darkText|lightText|tintColor|system[A-Z]\w*|secondarySystem\w*|tertiarySystem\w*|quaternarySystem\w*)\b|\bColor\(\s*(\"|\.(?!Theme\b)|(red|hue|white|uiColor|cgColor|nsColor)\s*:)|\bUIColor\(\s*(red|hue|white|displayP3Red|named|cgColor|ciColor|dynamicProvider)\s*:|#colorLiteral\('
+    message: "不指定顏色：選單列與選單由系統配色；確有需要時先與使用者討論（Music-Tool 以 Assets.xcassets/ThemeColor/ 產生的 symbol 提供）"
+    severity: error
+
+  no_preview:
+    name: "No Preview"
+    # 專案不宣告 SwiftUI preview：選單以 mise run install 後實際點選確認
+    regex: '#Preview\b|\bPreviewProvider\b'
+    excluded_match_kinds:
+      - comment
+      - doccomment
+    message: "不宣告 #Preview 或 PreviewProvider；選單以 mise run install 後實際點選確認"
+    severity: error
+
+  mapping_in_mapping_folder:
+    name: "Mapping in Mapping Folder"
+    # 值對應到文字、顏色、圖片的 conformance 集中在 Targets/App/NoSleep/Mapping/
+    regex: '^[ \t]*((private|fileprivate|internal|public|nonisolated)[ \t]+)*(extension|struct|enum)[ \t]+[\w.]+[^{\n]*\b(LocalizedStringResourceConvertible|ColorResourceConvertible|ImageResourceConvertible|JSONEncodable|JSONObjectEncodable)\b'
+    excluded_match_kinds:
+      - comment
+      - doccomment
+    message: "對應到文字、顏色、圖片、JSON 的 conformance 只能寫成 extension 放在 Targets/App/NoSleep/Mapping/ 對應的資料夾"
+    severity: error
+    included:
+      - '/Targets/App/'
+      - '/Targets/NoSleepCore/'
+    excluded:
+      - '/NoSleep/Mapping/'
+
+  mapping_via_protocol:
+    name: "Mapping via Protocol"
+    # 對應只透過 protocol 的屬性（localizedStringResource、colorResource、imageResource）提供
+    regex: '\b(var|let)[ \t]+(?!(localizedStringResource|colorResource|imageResource)\b)\w+[ \t]*:[ \t]*(LocalizedStringResource|ColorResource|ImageResource)\b'
+    excluded_match_kinds:
+      - comment
+      - doccomment
+    message: "值對應到文字、顏色、圖片時遵循 LocalizedStringResourceConvertible／ColorResourceConvertible／ImageResourceConvertible，不另外宣告 name、color、image 等屬性"
+    severity: error
+    included:
+      - '/Targets/App/'
+      - '/Targets/NoSleepCore/'
+
   side_effect_via_dependency:
     name: "Side Effect via Dependency Injection"
     regex: '\bDate(\.init)?\(\)|\bDate\.now\b|\bUUID(\.init)?\(\)|\bCFAbsoluteTimeGetCurrent\b|\.random(Element)?\(|\bSystemRandomNumberGenerator\b|\.shuffled?\(\)|\bUserDefaults\.standard\b|\bSecItem(Add|CopyMatching|Update|Delete)\b|\bFileManager\.default\b|\bURLSession\.shared\b|\b(Locale|TimeZone|Calendar)\.(current|autoupdatingCurrent)\b|\bNotificationCenter\.default\b|\bTask\.sleep\b|\b(Continuous|Suspending)Clock\(\)'
-    message: "有副作用的 API 必須透過依賴注入取得，live 實作只能放在 Targets/NoSleepPlugin/Dependencies/Live/"
+    message: "有副作用的 API 必須透過依賴注入取得，live 實作只能放在 Targets/App/NoSleep/Dependencies/Live/"
     severity: error
     excluded:
-      - '/NoSleepPlugin/Dependencies/Live/'
+      - '/NoSleep/Dependencies/Live/'
 
   no_singleton_declaration:
     name: "No Singleton Declaration"
@@ -85,10 +147,10 @@ custom_rules:
   no_singleton_access:
     name: "No Singleton Access"
     regex: '\b[A-Z]\w*\.(shared|sharedInstance)\b|\bUIDevice\.current\b|\bUIScreen\.main\b|\bBundle\.main\b|\bProcessInfo\.processInfo\b'
-    message: "禁止直接取用 singleton，請透過依賴注入；包裝系統 singleton 的 live 實作只能放在 Targets/NoSleepPlugin/Dependencies/Live/"
+    message: "禁止直接取用 singleton，請透過依賴注入；包裝系統 singleton 的 live 實作只能放在 Targets/App/NoSleep/Dependencies/Live/"
     severity: error
     excluded:
-      - '/NoSleepPlugin/Dependencies/Live/'
+      - '/NoSleep/Dependencies/Live/'
 
   no_inline_string_literal:
     name: "No Inline String Literal"
@@ -114,7 +176,7 @@ custom_rules:
     severity: error
     included:
       - '/Targets/NoSleepCore/'
-      - '/Targets/NoSleepPlugin/'
+      - '/Targets/App/'
       - '/Tests/'
 
   explicit_sendable:
@@ -128,7 +190,7 @@ custom_rules:
     severity: error
     included:
       - '/Targets/NoSleepCore/'
-      - '/Targets/NoSleepPlugin/'
+      - '/Targets/App/'
 
   no_unsafe_pointer:
     name: "No Unsafe Pointer"
@@ -137,14 +199,14 @@ custom_rules:
     match_kinds:
       - identifier
       - typeidentifier
-    message: "不用 unsafe 指標：連續記憶體用 Span／MutableSpan 或 Array；系統 API 交出的指標只能在 Targets/NoSleepPlugin/Dependencies/Live/ 轉成 Array"
+    message: "不用 unsafe 指標：連續記憶體用 Span／MutableSpan 或 Array；系統 API 交出的指標只能在 Targets/App/NoSleep/Dependencies/Live/ 轉成 Array"
     severity: error
     included:
       - '/Targets/NoSleepCore/'
-      - '/Targets/NoSleepPlugin/'
+      - '/Targets/App/'
       - '/Tests/'
     excluded:
-      - '/NoSleepPlugin/Dependencies/Live/'
+      - '/NoSleep/Dependencies/Live/'
 
   no_unchecked_sendable:
     name: "No Unchecked Sendable"
@@ -184,7 +246,7 @@ custom_rules:
     severity: error
     included:
       - '/Targets/NoSleepCore/'
-      - '/Targets/NoSleepPlugin/'
+      - '/Targets/App/'
 
   no_unstructured_concurrency:
     name: "No Unstructured Concurrency"
@@ -222,15 +284,17 @@ custom_rules:
 
   system_framework_in_wrapper:
     name: "System Framework in Wrapper"
-    # 這些框架提供的是 class（Foundation 的 Process 等），只在包裝系統的 live 實作使用
-    regex: '^[ \t]*(@\w+[ \t]+)*import[ \t]+(UIKit|AppKit|AVFAudio|AVFoundation|AVKit|AudioToolbox|CoreAudio|Dispatch|ObjectiveC|Foundation)\b'
-    message: "提供 class 的系統框架只能在 Targets/NoSleepPlugin/Dependencies/Live/ import，由 struct 包裝後對外只露出 protocol 與值型別"
+    # 這些框架提供的是 class（Foundation 的 Process、ServiceManagement 的 SMAppService 等）或 C 的系統 API，只在包裝系統的 live 實作使用；
+    # Mapping/ 例外：LocalizedStringResource 在 Foundation
+    regex: '^[ \t]*(@\w+[ \t]+)*import[ \t]+(UIKit|AppKit|AVFAudio|AVFoundation|AVKit|AudioToolbox|CoreAudio|Dispatch|ObjectiveC|IOKit|ServiceManagement|Foundation)\b'
+    message: "提供 class 的系統框架只能在 Targets/App/NoSleep/Dependencies/Live/ import，由 struct 包裝後對外只露出 protocol 與值型別"
     severity: error
     included:
       - '/Targets/NoSleepCore/'
-      - '/Targets/NoSleepPlugin/'
+      - '/Targets/App/'
     excluded:
-      - '/NoSleepPlugin/Dependencies/Live/'
+      - '/NoSleep/Dependencies/Live/'
+      - '/NoSleep/Mapping/'
 
   no_foundation_coder:
     name: "No Foundation Coder"
@@ -247,7 +311,7 @@ custom_rules:
     name: "Pure Type Import"
     # 純物件只能使用 Swift 標準函式庫，需要 Foundation 的功能時只能匯入 FoundationEssentials
     regex: '^[ \t]*(@\w+[ \t]+)*import[ \t]+(?!FoundationEssentials\b)\w+'
-    message: "NoSleepCore 的純物件不可依賴 Foundation 或平台框架（需要時用 FoundationEssentials）；碰到系統的部分放到 Targets/NoSleepPlugin/Dependencies/Live/"
+    message: "NoSleepCore 的純物件不可依賴 Foundation 或平台框架（需要時用 FoundationEssentials）；碰到系統的部分放到 Targets/App/NoSleep/Dependencies/Live/"
     severity: error
     included:
       - '/Targets/NoSleepCore/'
