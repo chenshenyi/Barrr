@@ -71,11 +71,11 @@ custom_rules:
   system_image_via_extension:
     name: "System Image via Extension"
     regex: '\b(Image|UIImage)\(\s*systemName:|systemImage:\s*"'
-    message: "SF Symbol 只能透過 MenuBarSymbol 與 Image(_:) extension 建立"
+    message: "SF Symbol 只能透過 AppSymbol 與 Image(_:) extension 建立"
     severity: error
     # extension 本身與驗證 symbol 是否存在的測試除外
     excluded:
-      - 'Targets/App/Barrr/Symbol/Image\+MenuBarSymbol\.swift$'
+      - 'Targets/App/Barrr/Symbol/Image\+AppSymbol\.swift$'
       - '/Tests/'
 
   localized_string_via_symbol:
@@ -88,7 +88,8 @@ custom_rules:
 
   color_via_theme:
     name: "Color via ThemeColor Symbol"
-    regex: '\b(Color|UIColor)\.(red|orange|yellow|green|mint|teal|cyan|blue|indigo|purple|pink|brown|white|gray|grey|black|magenta|darkGray|lightGray|primary|secondary|tertiary|quaternary|accentColor|label|secondaryLabel|tertiaryLabel|quaternaryLabel|link|placeholderText|separator|opaqueSeparator|darkText|lightText|tintColor|system[A-Z]\w*|secondarySystem\w*|tertiarySystem\w*|quaternarySystem\w*)\b|\.(foregroundStyle|foregroundColor|background|tint|fill|stroke|strokeBorder|border|overlay|accentColor|listRowBackground|listRowSeparatorTint|toolbarBackground)\(\s*\.(red|orange|yellow|green|mint|teal|cyan|blue|indigo|purple|pink|brown|white|gray|grey|black|magenta|darkGray|lightGray|primary|secondary|tertiary|quaternary|accentColor|label|secondaryLabel|tertiaryLabel|quaternaryLabel|link|placeholderText|separator|opaqueSeparator|darkText|lightText|tintColor|system[A-Z]\w*|secondarySystem\w*|tertiarySystem\w*|quaternarySystem\w*)\b|\bcolor:\s*\.(red|orange|yellow|green|mint|teal|cyan|blue|indigo|purple|pink|brown|white|gray|grey|black|magenta|darkGray|lightGray|primary|secondary|tertiary|quaternary|accentColor|label|secondaryLabel|tertiaryLabel|quaternaryLabel|link|placeholderText|separator|opaqueSeparator|darkText|lightText|tintColor|system[A-Z]\w*|secondarySystem\w*|tertiarySystem\w*|quaternarySystem\w*)\b|\bColor\(\s*(\"|\.(?!Theme\b)|(red|hue|white|uiColor|cgColor|nsColor)\s*:)|\bUIColor\(\s*(red|hue|white|displayP3Red|named|cgColor|ciColor|dynamicProvider)\s*:|#colorLiteral\('
+    # 允許 .primary／.secondary／.tertiary／.quaternary：它們是系統的語意層級，會隨深淺色與 Liquid Glass 調整，不是指定顏色
+    regex: '\b(Color|UIColor)\.(red|orange|yellow|green|mint|teal|cyan|blue|indigo|purple|pink|brown|white|gray|grey|black|magenta|darkGray|lightGray|accentColor|label|secondaryLabel|tertiaryLabel|quaternaryLabel|link|placeholderText|separator|opaqueSeparator|darkText|lightText|tintColor|system[A-Z]\w*|secondarySystem\w*|tertiarySystem\w*|quaternarySystem\w*)\b|\.(foregroundStyle|foregroundColor|background|tint|fill|stroke|strokeBorder|border|overlay|accentColor|listRowBackground|listRowSeparatorTint|toolbarBackground)\(\s*\.(red|orange|yellow|green|mint|teal|cyan|blue|indigo|purple|pink|brown|white|gray|grey|black|magenta|darkGray|lightGray|accentColor|label|secondaryLabel|tertiaryLabel|quaternaryLabel|link|placeholderText|separator|opaqueSeparator|darkText|lightText|tintColor|system[A-Z]\w*|secondarySystem\w*|tertiarySystem\w*|quaternarySystem\w*)\b|\bcolor:\s*\.(red|orange|yellow|green|mint|teal|cyan|blue|indigo|purple|pink|brown|white|gray|grey|black|magenta|darkGray|lightGray|accentColor|label|secondaryLabel|tertiaryLabel|quaternaryLabel|link|placeholderText|separator|opaqueSeparator|darkText|lightText|tintColor|system[A-Z]\w*|secondarySystem\w*|tertiarySystem\w*|quaternarySystem\w*)\b|\bColor\(\s*(\"|\.(?!Theme\b)|(red|hue|white|uiColor|cgColor|nsColor)\s*:)|\bUIColor\(\s*(red|hue|white|displayP3Red|named|cgColor|ciColor|dynamicProvider)\s*:|#colorLiteral\('
     message: "不指定顏色：選單列與選單由系統配色；確有需要時先與使用者討論（Music-Tool 以 Assets.xcassets/ThemeColor/ 產生的 symbol 提供）"
     severity: error
 
@@ -226,6 +227,33 @@ custom_rules:
       - identifier
     message: "禁止轉型與型別判斷（as、as?、as!、is、unsafeBitCast）：用泛型、protocol、enum associated value 或 typed throws 讓型別在編譯期確定；字面值的型別用型別標註或 init 指定"
     severity: error
+    # 系統交出的 untyped 值（CFTypeRef 等）只能經由 UntypedValue 條件轉型
+    excluded:
+      - 'Targets/App/Barrr/Dependencies/Live/Bridging/UntypedValue\.swift$'
+
+  bridging_conditional_cast_only:
+    name: "Bridging Conditional Cast Only"
+    # UntypedValue 是唯一允許轉型的檔案，也只允許條件轉型 as?
+    regex: '\bas!|\b(is|unsafeBitCast|unsafeDowncast)\b'
+    match_kinds:
+      - keyword
+      - identifier
+    message: "UntypedValue 只做條件轉型（as?），型別不符回傳 nil；不用 as!、is、unsafeBitCast"
+    severity: error
+    included:
+      - 'Targets/App/Barrr/Dependencies/Live/Bridging/UntypedValue\.swift$'
+
+  user_defaults_via_center:
+    name: "UserDefaults via UserDefaultsCenter"
+    regex: '@AppStorage\b|\bUserDefaults\b'
+    match_kinds:
+      - identifier
+      - typeidentifier
+      - attribute.id
+    message: "UserDefaults 只能透過 UserDefaultsCenter 與 UserDefaultsKey 存取；直接碰 UserDefaults 的只有 Dependencies/Live/ 的 LiveUserDefaultsStorage"
+    severity: error
+    excluded:
+      - '/Barrr/Dependencies/Live/'
 
   no_try_optional:
     name: "No try?"

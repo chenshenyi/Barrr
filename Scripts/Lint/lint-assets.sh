@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 檢查資源檔：Targets/App/ 底下只有 Resources/ 放資料，其餘只放 Swift；Resources/ 只有 StringCatalog/，不放 Swift；
+# 檢查資源檔：Targets/App/ 底下只有 Resources/ 放資料，其餘只放 Swift；Resources/ 只有 StringCatalog/ 與 App 圖示（AppIcon.icon），不放 Swift；
 # String Catalog 的每個 key 都要有 catalog 用到的所有語言（不翻譯的 key 也要填，否則執行期找不到而顯示 key 本身）
 set -euo pipefail
 
@@ -16,10 +16,10 @@ done < <(find "$BARRR_APP" -path "$BARRR_RESOURCES" -prune -o -type f ! -name '*
 
 while IFS= read -r -d '' entry; do
     case "$entry" in
-        "$BARRR_STRING_CATALOGS" | */.DS_Store) ;;
+        "$BARRR_STRING_CATALOGS" | "$BARRR_APP_ICON" | */.DS_Store) ;;
         *)
             echo "lint-assets: $(relative "$entry") 不該在 $(relative "$BARRR_RESOURCES")/ 底下；只能有" \
-                "$(basename "$BARRR_STRING_CATALOGS")/" >&2
+                "$(basename "$BARRR_STRING_CATALOGS")/、$(basename "$BARRR_APP_ICON")" >&2
             status=1
             ;;
     esac

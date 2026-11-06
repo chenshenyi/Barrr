@@ -41,4 +41,11 @@ public struct NoSleepModel {
             failure = error
         }
     }
+
+    /// 恢復照系統設定休眠（例如隱藏這個工具時，不留下看不到的不休眠）
+    public mutating func allowSleep() {
+        if let activeMode {
+            toggle(activeMode)
+        }
+    }
 }

@@ -8,7 +8,7 @@ options:
   developmentLanguage: en
 
 packages:
-  # 根目錄 Package.swift：每個功能的純物件 module（BarrrCore、NoSleepCore）
+  # 根目錄 Package.swift：每個功能的純物件 module（BarrrCore、NoSleepCore、PerformanceCore）
   BarrrModules:
     path: .
 
@@ -17,7 +17,7 @@ settings:
     SWIFT_VERSION: "6.0"
     # 每個檔案只能使用自己 import 的模組成員，import 不會跨檔案外漏
     SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
-    MARKETING_VERSION: "0.3.0"
+    MARKETING_VERSION: "0.4.0"
     CURRENT_PROJECT_VERSION: "1"
     # 沒有開發者帳號：ad-hoc 簽章（Sign to Run Locally），自己 build 的 App 沒有隔離標記，可以直接執行
     CODE_SIGN_STYLE: Manual
@@ -27,6 +27,8 @@ settings:
     LOCALIZATION_PREFERS_STRING_CATALOGS: YES
     SWIFT_EMIT_LOC_STRINGS: NO
     STRING_CATALOG_GENERATE_SYMBOLS: YES
+    # Icon Composer 的 Targets/App/Resources/AppIcon.icon（Liquid Glass 分層圖示）
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 
 targets:
   Barrr:
@@ -35,11 +37,19 @@ targets:
     sources:
       - Targets/App/Barrr
       - Targets/App/Resources
+    # build setting 沒有對應的 key 寫在這裡，xcodegen generate 時產生到 .build/InfoPlists/（不進版控），再與自動產生的內容合併
+    info:
+      path: .build/InfoPlists/Barrr.plist
+      properties:
+        # 選單列 App 要常駐：SwiftUI 預設讓沒有開著視窗的 App 可被系統自動終止
+        NSSupportsAutomaticTermination: false
     dependencies:
       - package: BarrrModules
         product: BarrrCore
       - package: BarrrModules
         product: NoSleepCore
+      - package: BarrrModules
+        product: PerformanceCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.chenshenyi.Barrr

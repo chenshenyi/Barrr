@@ -25,9 +25,9 @@ paths:
 
 ### 具體案例：純物件不依賴 Foundation
 
-**純物件**是 `Targets/Core/` 底下的型別，每個功能一個 `Package.swift` 的獨立 module（`BarrrCore`：登入時開啟與 `SettingsModel`；`NoSleepCore`：不休眠的方式與 `NoSleepModel`），不宣告任何依賴；App 以 `import NoSleepCore` 使用，對外的型別、成員與 init 宣告 `public`，只給內部或測試用的維持 internal（測試以 `@testable import NoSleepCore`）。
+**純物件**是 `Targets/Core/` 底下的型別，每個功能一個 `Package.swift` 的獨立 module（`BarrrCore`：工具的排列、登入時開啟與 `SettingsModel`；`NoSleepCore`：不休眠的方式與 `NoSleepModel`；`PerformanceCore`：CPU、記憶體與取樣），不宣告任何依賴；App 以 `import NoSleepCore` 使用，對外的型別、成員與 init 宣告 `public`，只給內部或測試用的維持 internal（測試以 `@testable import NoSleepCore`）。
 - 只用 Swift 標準函式庫表達，不可 `import Foundation`，也不可匯入平台框架；需要 Foundation 的功能時改用 `FoundationEssentials`，遇到它也沒有的 API 時，先列出來問使用者。
-- 碰系統的操作以 protocol 宣告在各 Core module（`AwakeController`、`LoginItemController`），live 實作放在 `Targets/App/Barrr/Dependencies/Live/`（`LiveAwakeController` 以 IOKit 的 power assertion、`LiveLoginItemController` 以 `SMAppService`）。
+- 碰系統的操作以 protocol 宣告在各 Core module（`AwakeController`、`LoginItemController`、`ToolLayoutStorage`、`SystemMetricsReader`），live 實作放在 `Targets/App/Barrr/Dependencies/Live/`（`LiveAwakeController` 以 IOKit 的 power assertion、`LiveLoginItemController` 以 `SMAppService`）。
 - 值對應到顯示文字的 mapping 寫成遵循 `LocalizedStringResourceConvertible` 的 extension，放在 `Targets/App/Barrr/Mapping/LocalizedString/`（`AwakeMode+Localizable.swift`），使用處 `Text(mode)`；SwiftLint `mapping_in_mapping_folder`、`mapping_via_protocol` 擋下其他寫法。
 - SwiftLint `pure_type_import` 會擋下純物件檔案中不允許的 import（module 不宣告依賴擋不住 Foundation 等 SDK 模組，所以仍需要 lint）。
 
@@ -38,10 +38,10 @@ paths:
 | 類別 | 禁止直接使用 | 注入方式 |
 | --- | --- | --- |
 | 時間 | `Date()`、`Date.now` | 注入 `@Sendable () -> Date` 或 provider |
-| 計時／等待 | `Task.sleep`、`ContinuousClock()`、`SuspendingClock()` | 注入 `any Clock<Duration>` |
+| 計時／等待 | `Task.sleep`、`ContinuousClock()`、`SuspendingClock()` | 注入 `any Clock<Duration>`；要 `sleep(until:)` 時用泛型 `C: Clock`（existential 不能用） |
 | 識別碼 | `UUID()` | 注入 `@Sendable () -> UUID` |
 | 亂數 | `.random(…)`、`.randomElement()`、`.shuffled()`、`SystemRandomNumberGenerator` | 注入 `RandomNumberGenerator` |
-| UserDefaults | `UserDefaults`、`@AppStorage` | 注入 |
+| UserDefaults | `UserDefaults`、`@AppStorage` | 透過注入的 `UserDefaultsCenter`（key 是 `UserDefaultsKey<Value>`，名稱列在 `UserDefaultsName`） |
 | Keychain | `SecItemAdd`／`SecItemCopyMatching`／`SecItemUpdate`／`SecItemDelete` | 注入 keychain 存取型別 |
 | 檔案系統 | `FileManager.default` | 注入 |
 | 網路 | `URLSession.shared` | 注入 |
@@ -64,7 +64,7 @@ paths:
 
 - 數字與字串字面常數不可散落在程式碼中，只能出現在具名常數的宣告處：`let`／`static let`、enum case raw value、switch case 的對應值。
 - 允許的例外：數字 `0`、`1`、空字串 `""`、註解、`Targets/Tests/` 底下的測試資料。
-- 共用的常數集中在語意化的型別中，不要在各處重複宣告同一個值；選單列圖示是 `MenuBarSymbol` 的 case。
+- 共用的常數集中在語意化的型別中，不要在各處重複宣告同一個值；圖示是 `AppSymbol` 的 case。
 - UI 文字一律用 String Catalog symbol（見 `.claude/rules/localization.md`），不是用常數字串取代。
 - SwiftLint `no_magic_numbers` 與 `no_inline_string_literal` 會擋下。
 
@@ -79,7 +79,7 @@ paths:
 - **系統的 class 一律包裝**：`Foundation`、`AppKit`、`IOKit`、`CoreServices`、`ServiceManagement`、`Dispatch` 等提供 class 或 C API 的系統框架，只能在 `Dependencies/Live/` import（`Mapping/` 例外：`LocalizedStringResource` 在 Foundation）；包裝它們的型別本身是 struct，對外只露出 protocol 與值型別。SwiftLint `system_framework_in_wrapper` 會擋下其餘位置的 import。
 - 不用 Foundation 的 class 編解碼器（`JSONDecoder`／`JSONEncoder` 等）與 `Encodable`／`Codable`；需要 JSON 時先與使用者討論（Music-Tool 用 swift-json）。SwiftLint `no_foundation_coder` 會擋下。
 - SwiftLint `no_reference_type` 會擋下上述寫法。`Targets/Tests/` 也適用：記錄呼叫的替身（`RecordingAwakeController`）是 struct，把呼叫 yield 進 `AsyncStream`，測試以 `recordedCalls()` 取得依序的呼叫。
-- **禁止轉型**：不用 `as`、`as?`、`as!`、`is` 與 `unsafeBitCast`／`unsafeDowncast`，型別一律在編譯期確定。需要依型別分流時改用泛型、protocol、enum 的 associated value；`catch` 需要具體的錯誤型別時用 typed throws（`throws(AwakeControlError)`、`do throws(AwakeControlError) { … } catch { … }`）；字面值的型別用型別標註或 `init` 指定。SwiftLint `no_type_cast` 會擋下，範圍包含 `Targets/Tests/`。
+- **禁止轉型**：不用 `as`、`as?`、`as!`、`is` 與 `unsafeBitCast`／`unsafeDowncast`，型別一律在編譯期確定。唯一的例外是系統交出的 untyped 值（IOKit／CoreFoundation 的 `CFTypeRef`、CF 字典），只能經由 `Dependencies/Live/Bridging/UntypedValue.swift` 以 `as?` 條件轉型，型別不符回傳 nil。需要依型別分流時改用泛型、protocol、enum 的 associated value；`catch` 需要具體的錯誤型別時用 typed throws（`throws(AwakeControlError)`、`do throws(AwakeControlError) { … } catch { … }`）；字面值的型別用型別標註或 `init` 指定。SwiftLint `no_type_cast` 會擋下，範圍包含 `Targets/Tests/`。
 - **不用 unsafe 指標**：連續記憶體用 `Span`／`MutableSpan` 或 `Array`，不用 `withUnsafeBufferPointer`、`UnsafePointer` 系列與 `Unmanaged`；系統 API 交出的指標只在 `Dependencies/Live/` 轉成 `Array`。SwiftLint `no_unsafe_pointer` 會擋下。
 - **效能優化先量測**：先寫清楚、安全的版本，量測證明是瓶頸才換寫法。
 - 存取控制從最小開始：預設 `private`，需要時再放寬。
@@ -111,6 +111,7 @@ paths:
 
 - View 只負責呈現與轉送使用者操作，不直接執行副作用；邏輯放在可測試的 model（`SettingsModel`、`NoSleepModel`）。
 - 不宣告 `#Preview`／`PreviewProvider`：選單以 `mise run install` 後實際點選確認；SwiftLint `no_preview` 會擋下。
-- 不指定顏色：選單列與選單由系統配色；SwiftLint `color_via_theme` 擋下系統色與自訂色值。
-- SF Symbol 只能經由 `MenuBarSymbol` 與 `Image(_:)`（`Symbol/Image+MenuBarSymbol.swift`）建立；SwiftLint `system_image_via_extension` 會擋下 `Image(systemName:)`。
+- 不指定顏色：選單列與選單由系統配色，文字層級只用系統的語意樣式（`.secondary`、`.tertiary` 等）；SwiftLint `color_via_theme` 擋下系統色與自訂色值。
+- Liquid Glass 維持最簡單的兩層：管理視窗整個是一塊玻璃，放控制項的卡片各一塊 `.glassEffect`、按鈕用 `.buttonStyle(.glass)`；卡片裡不再疊玻璃。
+- SF Symbol 只能經由 `AppSymbol` 與 `Image(_:)`（`Symbol/Image+AppSymbol.swift`）建立；SwiftLint `system_image_via_extension` 會擋下 `Image(systemName:)`。
 - `body` 過長時拆成子 View，一個 View 一個檔案。

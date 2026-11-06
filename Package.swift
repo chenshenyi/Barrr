@@ -8,9 +8,10 @@ let package = Package(
     products: [
         .library(name: "BarrrCore", targets: ["BarrrCore"]),
         .library(name: "NoSleepCore", targets: ["NoSleepCore"]),
+        .library(name: "PerformanceCore", targets: ["PerformanceCore"]),
     ],
     targets: [
-        // App 共用的設定（登入時開啟）；只用 Swift 標準函式庫，碰系統的部分只透過 protocol
+        // App 共用的設定（工具的順序與顯示、登入時開啟）；只用 Swift 標準函式庫，碰系統的部分只透過 protocol
         .target(
             name: "BarrrCore",
             path: "Targets/Core/Barrr",
@@ -20,6 +21,12 @@ let package = Package(
         .target(
             name: "NoSleepCore",
             path: "Targets/Core/NoSleep",
+            swiftSettings: [.enableUpcomingFeature("MemberImportVisibility")]
+        ),
+        // 系統效能（CPU、記憶體）；只用 Swift 標準函式庫，碰系統的部分只透過 SystemMetricsReader
+        .target(
+            name: "PerformanceCore",
+            path: "Targets/Core/Performance",
             swiftSettings: [.enableUpcomingFeature("MemberImportVisibility")]
         ),
         // 以 swift test 執行，不需要 build App
@@ -33,6 +40,12 @@ let package = Package(
             name: "NoSleepCoreTests",
             dependencies: ["NoSleepCore"],
             path: "Targets/Tests/NoSleepCoreTests",
+            swiftSettings: [.enableUpcomingFeature("MemberImportVisibility")]
+        ),
+        .testTarget(
+            name: "PerformanceCoreTests",
+            dependencies: ["PerformanceCore"],
+            path: "Targets/Tests/PerformanceCoreTests",
             swiftSettings: [.enableUpcomingFeature("MemberImportVisibility")]
         ),
     ]
