@@ -1,4 +1,4 @@
-name: NoSleep
+name: Barrr
 
 options:
   bundleIdPrefix: com.chenshenyi
@@ -8,8 +8,8 @@ options:
   developmentLanguage: en
 
 packages:
-  # 根目錄 Package.swift：NoSleepCore（狀態與操作的純物件）
-  NoSleepModules:
+  # 根目錄 Package.swift：每個功能的純物件 module（BarrrCore、NoSleepCore）
+  BarrrModules:
     path: .
 
 settings:
@@ -17,7 +17,7 @@ settings:
     SWIFT_VERSION: "6.0"
     # 每個檔案只能使用自己 import 的模組成員，import 不會跨檔案外漏
     SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
-    MARKETING_VERSION: "0.2.0"
+    MARKETING_VERSION: "0.3.0"
     CURRENT_PROJECT_VERSION: "1"
     # 沒有開發者帳號：ad-hoc 簽章（Sign to Run Locally），自己 build 的 App 沒有隔離標記，可以直接執行
     CODE_SIGN_STYLE: Manual
@@ -29,21 +29,23 @@ settings:
     STRING_CATALOG_GENERATE_SYMBOLS: YES
 
 targets:
-  NoSleep:
+  Barrr:
     type: application
     platform: macOS
     sources:
-      - Targets/App/NoSleep
+      - Targets/App/Barrr
       - Targets/App/Resources
     dependencies:
-      - package: NoSleepModules
+      - package: BarrrModules
+        product: BarrrCore
+      - package: BarrrModules
         product: NoSleepCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.chenshenyi.NoSleep
-        PRODUCT_NAME: No Sleep
+        PRODUCT_BUNDLE_IDENTIFIER: com.chenshenyi.Barrr
+        PRODUCT_NAME: Barrr
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: No Sleep
-        # 只有選單列圖示，沒有 Dock 圖示與選單列的 App 選單
+        INFOPLIST_KEY_CFBundleDisplayName: Barrr
+        # 只有選單列圖示與管理視窗，沒有 Dock 圖示與選單列的 App 選單
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities

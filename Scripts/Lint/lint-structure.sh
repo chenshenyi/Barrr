@@ -7,7 +7,7 @@ set -euo pipefail
 
 MAX_ENTRIES=12
 
-cd "$NOSLEEP_ROOT"
+cd "$BARRR_ROOT"
 
 LS_FILES_ARGS=(--cached --others --exclude-standard)
 if [ "${1:-}" = "--staged" ]; then

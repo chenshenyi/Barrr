@@ -5,7 +5,7 @@ paths:
 
 # 單元測試規則
 
-適用於 `Targets/Tests/NoSleepCoreTests/`（`Package.swift` 的 `NoSleepCoreTests`，以 `swift test` 執行）的測試。新增或修改測試時遵守以下規則。
+適用於 `Targets/Tests/` 的測試（`Package.swift` 每個 Core module 一個 test target，例如 `NoSleepCoreTests`，以 `swift test` 執行）。新增或修改測試時遵守以下規則。
 
 ## F.I.R.S.T. 原則
 
@@ -22,15 +22,15 @@ paths:
 ## 撰寫慣例
 
 - 使用 Swift Testing（`import Testing`、`@Test`、`#expect`、`#require`），不使用 XCTest。
-- 以 `@testable import NoSleepCore` 匯入受測模組。
+- 匯入受測模組（`import NoSleepCore`；需要 internal 成員時才用 `@testable import`）。
 - 一個測試檔對應一個受測型別，檔名為 `<受測型別>Tests.swift`，測試型別為 `struct <受測型別>Tests`；每個檔案只有一個根層級型別。
 - 測試函式名稱描述「情境與預期結果」，例如 `toggleOtherModeReleasesCurrentFirst()`、`failedHoldKeepsSleepAllowedAndReportsFailure()`；必要時以 `@Test("…")` 補上可讀描述。
 - 測試內容依 Arrange／Act／Assert 分段，段落間空一行，不另加註解標示。
 - 一個測試只驗證一個行為；同一行為的多組輸入用參數化測試 `@Test(arguments:)`，不要寫迴圈或複製貼上。
 - 預期必定存在的值用 `try #require(...)` 解包，不使用 `!` 強制解包。
 - 預期拋錯用 `#expect(throws: ...)`；非同步程式碼直接寫成 `async` 測試並 `await`。
-- 測試檔依受測型別在 `Targets/NoSleepCore/` 的位置對應；App 的 View 與 live 實作不寫單元測試（碰真的 IOKit、登入項目），改以 `mise run install` 後實際點選確認。
-- 共用的測試資料與替身（stub／fake）放在 `Targets/Tests/NoSleepCoreTests/Support/`，不要在多個測試檔重複定義。替身是 struct：`RecordingAwakeController` 以 `init(holdError:releaseError:)` 設定失敗，測試用 `await awake.recordedCalls()` 取得依序的呼叫並比對整串；`FixedLoginItemController` 回傳給定的狀態。`NoSleepModel` 是 `@MainActor`，測試型別也標 `@MainActor`。
+- 測試檔依受測型別所在的 Core module 放進對應的 test target；App 的 View 與 live 實作不寫單元測試（碰真的 IOKit、登入項目），改以 `mise run install` 後實際點選確認。
+- 共用的測試資料與替身（stub／fake）放在各 test target 的 `Support/`，不要在多個測試檔重複定義。替身是 struct：`RecordingAwakeController` 以 `init(holdError:releaseError:)` 設定失敗，測試用 `await awake.recordedCalls()` 取得依序的呼叫並比對整串；`FixedLoginItemController`（`BarrrCoreTests`）回傳給定的狀態。model 是 `@MainActor`，測試型別也標 `@MainActor`。
 - 只測公開行為與結果，不為了測試而把 `private` 改成 `internal`，也不驗證實作細節。
 
 ## 完成前

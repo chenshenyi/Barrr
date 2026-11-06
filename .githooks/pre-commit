@@ -15,20 +15,20 @@ eval "$(mise env --shell bash)"
 FILES_LIST="$(mktemp)"
 trap 'rm -f "$FILES_LIST"' EXIT
 
-if git diff --cached --name-only --diff-filter=ACMR -- "$NOSLEEP_SOURCES" ':(exclude)*.swift' | grep -q . ||
-    git diff --cached --name-only --diff-filter=ACMRD -- "$NOSLEEP_RESOURCES" | grep -q .; then
+if git diff --cached --name-only --diff-filter=ACMR -- "$BARRR_SOURCES" ':(exclude)*.swift' | grep -q . ||
+    git diff --cached --name-only --diff-filter=ACMRD -- "$BARRR_RESOURCES" | grep -q .; then
     echo "pre-commit: resources"
-    "$NOSLEEP_LINT_SCRIPTS/lint-assets.sh"
+    "$BARRR_LINT_SCRIPTS/lint-assets.sh"
 fi
 
 if git diff --cached --name-only --diff-filter=AR | grep -q .; then
     echo "pre-commit: structure"
-    "$NOSLEEP_LINT_SCRIPTS/lint-structure.sh" --staged
+    "$BARRR_LINT_SCRIPTS/lint-structure.sh" --staged
 fi
 
-if git diff --cached --name-only --diff-filter=ACMR -- "$NOSLEEP_SCRIPTS" "$NOSLEEP_GIT_HOOKS" | grep -q .; then
+if git diff --cached --name-only --diff-filter=ACMR -- "$BARRR_SCRIPTS" "$BARRR_GIT_HOOKS" | grep -q .; then
     echo "pre-commit: scripts"
-    "$NOSLEEP_LINT_SCRIPTS/lint-scripts.sh"
+    "$BARRR_LINT_SCRIPTS/lint-scripts.sh"
 fi
 
 git diff --cached --name-only --diff-filter=ACMR -z -- '*.swift' >"$FILES_LIST"
@@ -43,8 +43,8 @@ if [ -n "$PARTIAL" ]; then
 fi
 
 echo "pre-commit: SwiftFormat"
-xargs -0 swiftformat --config "$NOSLEEP_SWIFTFORMAT_CONFIG" --quiet <"$FILES_LIST"
+xargs -0 swiftformat --config "$BARRR_SWIFTFORMAT_CONFIG" --quiet <"$FILES_LIST"
 xargs -0 git add -- <"$FILES_LIST"
 
 echo "pre-commit: SwiftLint"
-xargs -0 swiftlint lint --config "$NOSLEEP_SWIFTLINT_CONFIG" --quiet --force-exclude <"$FILES_LIST"
+xargs -0 swiftlint lint --config "$BARRR_SWIFTLINT_CONFIG" --quiet --force-exclude <"$FILES_LIST"

@@ -5,30 +5,30 @@ set -euo pipefail
 
 # 訊息中的路徑以 repo 根目錄為基準
 relative() {
-    echo "${1#"$NOSLEEP_ROOT"/}"
+    echo "${1#"$BARRR_ROOT"/}"
 }
 
 status=0
 while IFS= read -r -d '' file; do
-    echo "lint-assets: $(relative "$file") 不是 Swift 檔，資料請移到 $(relative "$NOSLEEP_RESOURCES")/ 底下" >&2
+    echo "lint-assets: $(relative "$file") 不是 Swift 檔，資料請移到 $(relative "$BARRR_RESOURCES")/ 底下" >&2
     status=1
-done < <(find "$NOSLEEP_APP" -path "$NOSLEEP_RESOURCES" -prune -o -type f ! -name '*.swift' ! -name '.DS_Store' -print0)
+done < <(find "$BARRR_APP" -path "$BARRR_RESOURCES" -prune -o -type f ! -name '*.swift' ! -name '.DS_Store' -print0)
 
 while IFS= read -r -d '' entry; do
     case "$entry" in
-        "$NOSLEEP_STRING_CATALOGS" | */.DS_Store) ;;
+        "$BARRR_STRING_CATALOGS" | */.DS_Store) ;;
         *)
-            echo "lint-assets: $(relative "$entry") 不該在 $(relative "$NOSLEEP_RESOURCES")/ 底下；只能有" \
-                "$(basename "$NOSLEEP_STRING_CATALOGS")/" >&2
+            echo "lint-assets: $(relative "$entry") 不該在 $(relative "$BARRR_RESOURCES")/ 底下；只能有" \
+                "$(basename "$BARRR_STRING_CATALOGS")/" >&2
             status=1
             ;;
     esac
-done < <(find "$NOSLEEP_RESOURCES" -mindepth 1 -maxdepth 1 -print0)
+done < <(find "$BARRR_RESOURCES" -mindepth 1 -maxdepth 1 -print0)
 
 while IFS= read -r -d '' entry; do
-    echo "lint-assets: $(relative "$entry") 不是 String Catalog，$(basename "$NOSLEEP_STRING_CATALOGS")/ 只放 *.xcstrings" >&2
+    echo "lint-assets: $(relative "$entry") 不是 String Catalog，$(basename "$BARRR_STRING_CATALOGS")/ 只放 *.xcstrings" >&2
     status=1
-done < <(find "$NOSLEEP_STRING_CATALOGS" -mindepth 1 ! -name '*.xcstrings' ! -name '.DS_Store' -print0)
+done < <(find "$BARRR_STRING_CATALOGS" -mindepth 1 ! -name '*.xcstrings' ! -name '.DS_Store' -print0)
 
 while IFS= read -r -d '' catalog; do
     missing="$(jq -r '
@@ -44,6 +44,6 @@ while IFS= read -r -d '' catalog; do
         done <<<"$missing"
         status=1
     fi
-done < <(find "$NOSLEEP_STRING_CATALOGS" -name '*.xcstrings' -print0)
+done < <(find "$BARRR_STRING_CATALOGS" -name '*.xcstrings' -print0)
 
 exit "$status"

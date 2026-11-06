@@ -18,19 +18,19 @@
         }
       }
     },
-    "failureLoginItem" : {
+    "failureRegisterLoginItem" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Couldn't change Open at Login"
+            "value" : "Couldn't turn on Open at Login"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法變更登入時開啟"
+            "value" : "無法開啟「登入時開啟」"
           }
         }
       }
@@ -52,53 +52,19 @@
         }
       }
     },
-    "menuLaunchAtLogin" : {
+    "failureUnregisterLoginItem" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open at Login"
+            "value" : "Couldn't turn off Open at Login"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "登入時開啟"
-          }
-        }
-      }
-    },
-    "menuQuit" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quit No Sleep"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "結束 No Sleep"
-          }
-        }
-      }
-    },
-    "menuResume" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Allow Sleep"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "恢復休眠"
+            "value" : "無法關閉「登入時開啟」"
           }
         }
       }
@@ -133,6 +99,75 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "不休眠（螢幕保持亮）"
+          }
+        }
+      }
+    },
+    "settingsLaunchAtLogin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open at Login"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入時開啟"
+          }
+        }
+      }
+    },
+    "settingsQuit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quit Barrr"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "結束 Barrr"
+          }
+        }
+      }
+    },
+    "settingsReopenHint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Barrr again (from Finder or Spotlight) to show this window."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再次開啟 Barrr（從 Finder 或 Spotlight）即可回到這個視窗。"
+          }
+        }
+      }
+    },
+    "settingsTitle" : {
+      "extractionState" : "manual",
+      "shouldTranslate" : false,
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barrr"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barrr"
           }
         }
       }

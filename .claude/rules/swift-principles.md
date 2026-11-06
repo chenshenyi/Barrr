@@ -25,10 +25,10 @@ paths:
 
 ### 具體案例：純物件不依賴 Foundation
 
-**純物件**是 `Targets/NoSleepCore/` 底下的型別（不休眠的方式、選單的狀態與操作 `NoSleepModel`）。NoSleepCore 是 `Package.swift` 的獨立 module，不宣告任何依賴；App 以 `import NoSleepCore` 使用，對外的型別、成員與 init 宣告 `public`，只給內部或測試用的維持 internal（測試以 `@testable import NoSleepCore`）。
+**純物件**是 `Targets/Core/` 底下的型別，每個功能一個 `Package.swift` 的獨立 module（`BarrrCore`：登入時開啟與 `SettingsModel`；`NoSleepCore`：不休眠的方式與 `NoSleepModel`），不宣告任何依賴；App 以 `import NoSleepCore` 使用，對外的型別、成員與 init 宣告 `public`，只給內部或測試用的維持 internal（測試以 `@testable import NoSleepCore`）。
 - 只用 Swift 標準函式庫表達，不可 `import Foundation`，也不可匯入平台框架；需要 Foundation 的功能時改用 `FoundationEssentials`，遇到它也沒有的 API 時，先列出來問使用者。
-- 碰系統的操作以 protocol 宣告在 NoSleepCore（`AwakeController`、`LoginItemController`），live 實作放在 `Targets/App/NoSleep/Dependencies/Live/`（`LiveAwakeController` 以 IOKit 的 power assertion、`LiveLoginItemController` 以 `SMAppService`）。
-- 值對應到顯示文字的 mapping 寫成遵循 `LocalizedStringResourceConvertible` 的 extension，放在 `Targets/App/NoSleep/Mapping/LocalizedString/`（`AwakeMode+Localizable.swift`），使用處 `Text(mode)`；SwiftLint `mapping_in_mapping_folder`、`mapping_via_protocol` 擋下其他寫法。
+- 碰系統的操作以 protocol 宣告在各 Core module（`AwakeController`、`LoginItemController`），live 實作放在 `Targets/App/Barrr/Dependencies/Live/`（`LiveAwakeController` 以 IOKit 的 power assertion、`LiveLoginItemController` 以 `SMAppService`）。
+- 值對應到顯示文字的 mapping 寫成遵循 `LocalizedStringResourceConvertible` 的 extension，放在 `Targets/App/Barrr/Mapping/LocalizedString/`（`AwakeMode+Localizable.swift`），使用處 `Text(mode)`；SwiftLint `mapping_in_mapping_folder`、`mapping_via_protocol` 擋下其他寫法。
 - SwiftLint `pure_type_import` 會擋下純物件檔案中不允許的 import（module 不宣告依賴擋不住 Foundation 等 SDK 模組，所以仍需要 lint）。
 
 ## 副作用一律依賴注入
@@ -50,15 +50,15 @@ paths:
 
 - 依賴一律以 `init` 參數注入。
 - 依賴的型別用 protocol 或 `@Sendable` closure 表達，方便測試替換成固定值的替身。
-- 真正觸碰系統的 live 實作只能放在 `Targets/App/NoSleep/Dependencies/Live/`，在進入點（`NoSleepApp.swift`，composition root）建立後交給 `NoSleepModel`。
+- 真正觸碰系統的 live 實作只能放在 `Targets/App/Barrr/Dependencies/Live/`，在進入點（`BarrrApp.swift`，composition root）建立後交給各 model。
 - 測試一律注入固定值或替身（`RecordingAwakeController`、`FixedLoginItemController`），符合 F.I.R.S.T. 的 Repeatable。
-- SwiftLint `side_effect_via_dependency` 會擋下上表的直接使用（`Targets/App/NoSleep/Dependencies/Live/` 除外）。
+- SwiftLint `side_effect_via_dependency` 會擋下上表的直接使用（`Targets/App/Barrr/Dependencies/Live/` 除外）。
 
 ## 禁止 Singleton
 
 - 不可宣告任何 singleton：`static let shared`、`static var instance`、全域可變實體等一律禁止；需要共用的實體在 composition root 建立一次後以依賴注入往下傳。
-- 不可直接取用系統 singleton（`UIApplication.shared`、`UIDevice.current`、`UIScreen.main`、`Bundle.main`、`ProcessInfo.processInfo`、`URLSession.shared`、`FileManager.default`、`UserDefaults.standard`、`NotificationCenter.default` 等）；需要時在 `Targets/App/NoSleep/Dependencies/Live/` 包成可注入的 live 實作。
-- SwiftLint `no_singleton_declaration` 與 `no_singleton_access` 會擋下（後者 `Targets/App/NoSleep/Dependencies/Live/` 除外）；其他無法以 regex 偵測的形式（例如全域 `let` 的 class 實體）同樣禁止。
+- 不可直接取用系統 singleton（`UIApplication.shared`、`UIDevice.current`、`UIScreen.main`、`Bundle.main`、`ProcessInfo.processInfo`、`URLSession.shared`、`FileManager.default`、`UserDefaults.standard`、`NotificationCenter.default` 等）；需要時在 `Targets/App/Barrr/Dependencies/Live/` 包成可注入的 live 實作。
+- SwiftLint `no_singleton_declaration` 與 `no_singleton_access` 會擋下（後者 `Targets/App/Barrr/Dependencies/Live/` 除外）；其他無法以 regex 偵測的形式（例如全域 `let` 的 class 實體）同樣禁止。
 
 ## 字面常數與 Magic Number
 
@@ -71,11 +71,12 @@ paths:
 ## 型別與狀態
 
 - **只用 struct**：`Targets/` 的型別一律是 `struct`／`enum`。參考型別都不用，包含隱藏在語法後面的：`class`、`actor`、`@Observable`（巨集產生 class）、protocol 的 `AnyObject` 限制。
-- 有狀態的畫面：model 是 `@MainActor struct`（`NoSleepModel`），由 App 以 `@State` 保存並以 binding 交給 View；操作寫成 `mutating func`。
+- 有狀態的畫面：model 是 `@MainActor struct`（`SettingsModel`、`NoSleepModel`），由 App 以 `@State` 保存並以 binding 交給 View；操作寫成 `mutating func`。
 - 包裝系統物件的 live 實作也是 struct：使用時才取得系統物件，方法不改變自己；需要記住的狀態由系統交出的值表達（例如 `LiveAwakeController.hold` 回傳 `AwakeAssertion`，由 model 保存、交還時再傳回去）。
 - 想用參考型別的理由幾乎都是「多個實例要看到同一份可變資料」。先確認是否真的需要共用：常見的情況是寫法造成的，例如測試讓兩個實例共用 storage，可以改成由一方輸出值、另一方以這個值建立（見 `.claude/rules/unit-tests.md` 的 Independent）。
+- AppKit 要求 class 的地方（AppDelegate、target-action）先找 C API 等替代：例如「再次開啟 App」以 `AEInstallEventHandler` 安裝不捕捉值的 C 函式（`LiveAppReopen`），不寫 AppDelegate。
 - 逼不得已要用參考型別時，先與使用者討論有沒有替代方案；確定要用時一律 `final class`，在 doc comment 註明原因並以 `// swiftlint:disable:this no_reference_type` 標示。目前沒有例外。
-- **系統的 class 一律包裝**：`Foundation`、`AppKit`、`IOKit`、`ServiceManagement`、`Dispatch` 等提供 class 或 C API 的系統框架，只能在 `Dependencies/Live/` import（`Mapping/` 例外：`LocalizedStringResource` 在 Foundation）；包裝它們的型別本身是 struct，對外只露出 protocol 與值型別。SwiftLint `system_framework_in_wrapper` 會擋下其餘位置的 import。
+- **系統的 class 一律包裝**：`Foundation`、`AppKit`、`IOKit`、`CoreServices`、`ServiceManagement`、`Dispatch` 等提供 class 或 C API 的系統框架，只能在 `Dependencies/Live/` import（`Mapping/` 例外：`LocalizedStringResource` 在 Foundation）；包裝它們的型別本身是 struct，對外只露出 protocol 與值型別。SwiftLint `system_framework_in_wrapper` 會擋下其餘位置的 import。
 - 不用 Foundation 的 class 編解碼器（`JSONDecoder`／`JSONEncoder` 等）與 `Encodable`／`Codable`；需要 JSON 時先與使用者討論（Music-Tool 用 swift-json）。SwiftLint `no_foundation_coder` 會擋下。
 - SwiftLint `no_reference_type` 會擋下上述寫法。`Targets/Tests/` 也適用：記錄呼叫的替身（`RecordingAwakeController`）是 struct，把呼叫 yield 進 `AsyncStream`，測試以 `recordedCalls()` 取得依序的呼叫。
 - **禁止轉型**：不用 `as`、`as?`、`as!`、`is` 與 `unsafeBitCast`／`unsafeDowncast`，型別一律在編譯期確定。需要依型別分流時改用泛型、protocol、enum 的 associated value；`catch` 需要具體的錯誤型別時用 typed throws（`throws(AwakeControlError)`、`do throws(AwakeControlError) { … } catch { … }`）；字面值的型別用型別標註或 `init` 指定。SwiftLint `no_type_cast` 會擋下，範圍包含 `Targets/Tests/`。
@@ -88,7 +89,7 @@ paths:
 ## 並行
 
 - Swift 6 strict concurrency：UI 相關型別標 `@MainActor`。
-- **能 Sendable 就 Sendable**：`Targets/NoSleepCore/` 與 `Targets/App/` 的每個 struct／enum／protocol 都明確宣告 `Sendable`（依賴的實作也一樣）。例外：遵循 `Error` 的型別本身就是 Sendable；標了 `@MainActor` 的型別因隔離已是 Sendable，重複宣告會被 SwiftLint `redundant_sendable` 擋下。明確宣告讓編譯器在加入非 Sendable 的成員時直接報錯，而不是默默失去推斷出的 Sendable。
+- **能 Sendable 就 Sendable**：`Targets/Core/` 與 `Targets/App/` 的每個 struct／enum／protocol 都明確宣告 `Sendable`（依賴的實作也一樣）。例外：遵循 `Error` 的型別本身就是 Sendable；標了 `@MainActor` 的型別因隔離已是 Sendable，重複宣告會被 SwiftLint `redundant_sendable` 擋下。明確宣告讓編譯器在加入非 Sendable 的成員時直接報錯，而不是默默失去推斷出的 Sendable。
   - 確實無法 Sendable 時以 `swiftlint:disable` 標示並註明原因。SwiftLint `explicit_sendable` 會擋下沒有宣告的型別。
 - **能 `~Copyable` 就 `~Copyable`**：擁有唯一資源、複製會造成錯誤的型別（例如只能使用一次的 token、獨占的控制代碼）宣告為 `~Copyable`，用 `consuming`／`borrowing` 表達所有權。
   - 會放進 `Array`／`Dictionary`／`Set`、或需要 `Equatable`／`Hashable` 的型別都必須可複製，因此目前的型別都不適用；新增型別時先判斷是否擁有唯一資源。
@@ -100,7 +101,7 @@ paths:
 ## 錯誤處理
 
 - **不吞錯誤**：禁止 `try?`，每個錯誤都以 do-catch 具體處理；SwiftLint `no_try_optional` 會擋下（含 `Targets/Tests/`）。
-- **typed throws**：`Targets/NoSleepCore/` 與 `Targets/App/` 的 `throws` 一律帶錯誤型別（`throws(AwakeControlError)`），錯誤型別是列出失敗原因的 enum，讓 `catch` 拿到具體的型別、不需要轉型。
+- **typed throws**：`Targets/Core/` 與 `Targets/App/` 的 `throws` 一律帶錯誤型別（`throws(AwakeControlError)`），錯誤型別是列出失敗原因的 enum，讓 `catch` 拿到具體的型別、不需要轉型。
   - 系統 API（`SMAppService.register()` 等）的 untyped 錯誤在邊界以 do-catch 轉成自己的 case（`catch { throw .registerFailed }`）；回傳錯誤碼的 C API（IOKit）檢查後拋出帶錯誤碼的 case；需要保留原因供診斷時放進 associated value。
   - 必須符合 untyped 的系統要求時以 `// swiftlint:disable:this typed_throws` 標示並註明原因。SwiftLint `typed_throws` 會擋下其餘的 untyped throws。
   - 不用 `AsyncThrowingStream`（錯誤型別是 untyped）：開始前可能失敗的部分用 typed throws，串流本身用 `AsyncStream`；SwiftLint `no_async_throwing_stream` 會擋下。
@@ -108,7 +109,7 @@ paths:
 
 ## View
 
-- View 只負責呈現與轉送使用者操作，不直接執行副作用；邏輯放在可測試的 model（`NoSleepModel`）。
+- View 只負責呈現與轉送使用者操作，不直接執行副作用；邏輯放在可測試的 model（`SettingsModel`、`NoSleepModel`）。
 - 不宣告 `#Preview`／`PreviewProvider`：選單以 `mise run install` 後實際點選確認；SwiftLint `no_preview` 會擋下。
 - 不指定顏色：選單列與選單由系統配色；SwiftLint `color_via_theme` 擋下系統色與自訂色值。
 - SF Symbol 只能經由 `MenuBarSymbol` 與 `Image(_:)`（`Symbol/Image+MenuBarSymbol.swift`）建立；SwiftLint `system_image_via_extension` 會擋下 `Image(systemName:)`。

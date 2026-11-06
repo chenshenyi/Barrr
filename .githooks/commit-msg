@@ -10,7 +10,7 @@ fi
 # 路徑取自 mise.toml
 eval "$(mise env --shell bash)"
 # shellcheck source=/dev/null
-source "$NOSLEEP_COMMITLINT_CONFIG"
+source "$BARRR_COMMITLINT_CONFIG"
 
 MSG_FILE="$1"
 # 去掉 git 的註解行與 --verbose 產生的 diff

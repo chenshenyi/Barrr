@@ -1,4 +1,4 @@
-import NoSleepCore
+import BarrrCore
 
 /// 固定狀態的替身：`isEnabled` 一律回傳建立時給定的值，`setEnabled` 在 `error` 不為 nil 時拋出它
 struct FixedLoginItemController: LoginItemController {

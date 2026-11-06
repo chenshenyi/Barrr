@@ -1,4 +1,4 @@
-import NoSleepCore
+import BarrrCore
 import ServiceManagement
 
 /// 以 `SMAppService.mainApp` 設定登入時開啟（出現在系統設定的「登入項目」）

@@ -6,34 +6,34 @@ git-lfs = "3.8.0"
 
 # 腳本、task 與 git hooks 用到的路徑一律在這裡定義，腳本內不寫路徑字面值（lint:scripts 檢查）
 [env]
-NOSLEEP_ROOT = "{{config_root}}"
-NOSLEEP_MISE_CONFIG = "{{env.NOSLEEP_ROOT}}/mise.toml"
-NOSLEEP_SCRIPTS = "{{env.NOSLEEP_ROOT}}/Scripts"
-NOSLEEP_LINT_SCRIPTS = "{{env.NOSLEEP_SCRIPTS}}/Lint"
-NOSLEEP_GIT_HOOKS = "{{env.NOSLEEP_ROOT}}/.githooks"
-NOSLEEP_CONFIG = "{{env.NOSLEEP_ROOT}}/Config"
-NOSLEEP_SWIFTFORMAT_CONFIG = "{{env.NOSLEEP_CONFIG}}/.swiftformat"
-NOSLEEP_SWIFTLINT_CONFIG = "{{env.NOSLEEP_CONFIG}}/.swiftlint.yml"
-NOSLEEP_COMMITLINT_CONFIG = "{{env.NOSLEEP_CONFIG}}/commitlint.conf"
-NOSLEEP_APP = "{{env.NOSLEEP_ROOT}}/Targets/App"
-NOSLEEP_SOURCES = "{{env.NOSLEEP_APP}}/NoSleep"
-NOSLEEP_RESOURCES = "{{env.NOSLEEP_APP}}/Resources"
-NOSLEEP_STRING_CATALOGS = "{{env.NOSLEEP_RESOURCES}}/StringCatalog"
-NOSLEEP_PROJECT_SPEC = "{{env.NOSLEEP_ROOT}}/project.yml"
-NOSLEEP_PROJECT = "{{env.NOSLEEP_ROOT}}/NoSleep.xcodeproj"
-NOSLEEP_SCHEME = "NoSleep"
+BARRR_ROOT = "{{config_root}}"
+BARRR_MISE_CONFIG = "{{env.BARRR_ROOT}}/mise.toml"
+BARRR_SCRIPTS = "{{env.BARRR_ROOT}}/Scripts"
+BARRR_LINT_SCRIPTS = "{{env.BARRR_SCRIPTS}}/Lint"
+BARRR_GIT_HOOKS = "{{env.BARRR_ROOT}}/.githooks"
+BARRR_CONFIG = "{{env.BARRR_ROOT}}/Config"
+BARRR_SWIFTFORMAT_CONFIG = "{{env.BARRR_CONFIG}}/.swiftformat"
+BARRR_SWIFTLINT_CONFIG = "{{env.BARRR_CONFIG}}/.swiftlint.yml"
+BARRR_COMMITLINT_CONFIG = "{{env.BARRR_CONFIG}}/commitlint.conf"
+BARRR_APP = "{{env.BARRR_ROOT}}/Targets/App"
+BARRR_SOURCES = "{{env.BARRR_APP}}/Barrr"
+BARRR_RESOURCES = "{{env.BARRR_APP}}/Resources"
+BARRR_STRING_CATALOGS = "{{env.BARRR_RESOURCES}}/StringCatalog"
+BARRR_PROJECT_SPEC = "{{env.BARRR_ROOT}}/project.yml"
+BARRR_PROJECT = "{{env.BARRR_ROOT}}/Barrr.xcodeproj"
+BARRR_SCHEME = "Barrr"
 # project.yml 的 PRODUCT_NAME
-NOSLEEP_APP_NAME = "No Sleep"
-NOSLEEP_BUILD = "{{env.NOSLEEP_ROOT}}/.build"
-NOSLEEP_DERIVED_DATA = "{{env.NOSLEEP_BUILD}}/DerivedData"
+BARRR_APP_NAME = "Barrr"
+BARRR_BUILD = "{{env.BARRR_ROOT}}/.build"
+BARRR_DERIVED_DATA = "{{env.BARRR_BUILD}}/DerivedData"
 # mise run install 的安裝位置；可在 mise.local.toml 覆寫
-NOSLEEP_INSTALL_DIR = "/Applications"
+BARRR_INSTALL_DIR = "/Applications"
 
 [tasks.setup]
 description = "Clone 後初始化：啟用共用 git hooks、Git LFS，並產生 Xcode 專案"
 run = [
   "mise upgrade swiftlint swiftformat",
-  "git config core.hooksPath \"$NOSLEEP_GIT_HOOKS\"",
+  "git config core.hooksPath \"$BARRR_GIT_HOOKS\"",
   "git lfs install --local",
   "git lfs pull",
   "xcodegen generate",
@@ -44,50 +44,50 @@ description = "把 swiftlint、swiftformat 升到最新版"
 run = "mise upgrade swiftlint swiftformat"
 
 [tasks.generate]
-description = "依 project.yml 產生 NoSleep.xcodeproj"
+description = "依 project.yml 產生 Barrr.xcodeproj"
 run = "xcodegen generate"
 
 [tasks.build]
 description = "產生 Xcode 專案並以 Release 設定 build App（有 pueue 時排隊執行）"
-run = "$NOSLEEP_SCRIPTS/build.sh"
+run = "$BARRR_SCRIPTS/build.sh"
 
 [tasks.install]
 description = "build 後把 App 裝到 /Applications 並重新開啟"
 depends = ["build"]
-run = "$NOSLEEP_SCRIPTS/install.sh"
+run = "$BARRR_SCRIPTS/install.sh"
 
 [tasks.test]
-description = "執行 NoSleepCore 的測試（swift test；有 pueue 時排隊執行）"
-run = "$NOSLEEP_SCRIPTS/test.sh"
+description = "執行 Targets/Core/ 各 module 的測試（swift test；有 pueue 時排隊執行）"
+run = "$BARRR_SCRIPTS/test.sh"
 
 [tasks.format]
 description = "以 SwiftFormat 格式化（可傳入檔案路徑，預設整個 repo）"
 usage = 'arg "[paths]..." help="要格式化的路徑" default="."'
-run = "swiftformat --config \"$NOSLEEP_SWIFTFORMAT_CONFIG\" ${usage_paths?}"
+run = "swiftformat --config \"$BARRR_SWIFTFORMAT_CONFIG\" ${usage_paths?}"
 
 [tasks."format:check"]
 description = "只檢查格式，不改檔"
 usage = 'arg "[paths]..." help="要檢查的路徑" default="."'
-run = "swiftformat --config \"$NOSLEEP_SWIFTFORMAT_CONFIG\" --lint ${usage_paths?}"
+run = "swiftformat --config \"$BARRR_SWIFTFORMAT_CONFIG\" --lint ${usage_paths?}"
 
 [tasks.lint]
 description = "以 SwiftLint 檢查（可傳入檔案路徑，預設整個 repo）"
 depends = ["lint:assets", "lint:structure", "lint:scripts"]
 usage = 'arg "[paths]..." help="要檢查的路徑，未指定時依設定檔的 included"'
-run = "swiftlint lint --config \"$NOSLEEP_SWIFTLINT_CONFIG\" --quiet ${usage_paths:-}"
+run = "swiftlint lint --config \"$BARRR_SWIFTLINT_CONFIG\" --quiet ${usage_paths:-}"
 
 [tasks."lint:assets"]
 description = "檢查資源檔：資料只放在 Resources/，Resources/ 只放 String Catalog；每個 key 都要有每個語言"
-run = "$NOSLEEP_LINT_SCRIPTS/lint-assets.sh"
+run = "$BARRR_LINT_SCRIPTS/lint-assets.sh"
 
 [tasks."lint:structure"]
 description = "檢查目錄分層：根目錄以外，每個目錄的直接內容不可超過 12 個"
-run = "$NOSLEEP_LINT_SCRIPTS/lint-structure.sh"
+run = "$BARRR_LINT_SCRIPTS/lint-structure.sh"
 
 [tasks."lint:scripts"]
-description = "檢查腳本與 git hooks：路徑一律取自 mise.toml 的 [env]（NOSLEEP_*），不寫路徑字面值"
-run = "$NOSLEEP_LINT_SCRIPTS/lint-scripts.sh"
+description = "檢查腳本與 git hooks：路徑一律取自 mise.toml 的 [env]（BARRR_*），不寫路徑字面值"
+run = "$BARRR_LINT_SCRIPTS/lint-scripts.sh"
 
 [tasks."lint:fix"]
 description = "以 SwiftLint 自動修正可修的違規"
-run = "swiftlint lint --config \"$NOSLEEP_SWIFTLINT_CONFIG\" --fix --quiet"
+run = "swiftlint lint --config \"$BARRR_SWIFTLINT_CONFIG\" --fix --quiet"
